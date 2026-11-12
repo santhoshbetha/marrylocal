@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" class="dark theme-dark-amber">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          var root = document.documentElement;
+          var mode = localStorage.getItem('theme-mode') || 'dark';
+          var darkVariant = localStorage.getItem('dark-variant') || 'amber';
+
+          if (mode !== 'light' && mode !== 'dark') {
+            mode = 'dark';
+          }
+
+          if (darkVariant !== 'teal') {
+            darkVariant = 'amber';
+          }
+
+          root.classList.remove(
+            'theme-light-green',
+            'theme-dark-blue',
+            'theme-dark-amber',
+            'theme-dark-teal',
+            'dark',
+          );
+
+          if (mode === 'light') {
+            root.classList.add('theme-light-green');
+          } else {
+            root.classList.add('dark');
+            root.classList.add(darkVariant === 'teal' ? 'theme-dark-teal' : 'theme-dark-amber');
+          }
+
+          root.style.colorScheme = mode === 'light' ? 'light' : 'dark';
+          localStorage.setItem('theme-mode', mode);
+          localStorage.setItem('dark-variant', darkVariant);
+        } catch (error) {
+          document.documentElement.classList.remove(
+            'theme-light-green',
+            'theme-dark-blue',
+            'theme-dark-amber',
+            'theme-dark-teal',
+            'dark',
+          );
+          document.documentElement.classList.add('dark', 'theme-dark-amber');
+          document.documentElement.style.colorScheme = 'dark';
+        }
+      })();
+    </script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/svg+xml" href="/LogoYellow32.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Sriracha&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MarryLocal</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

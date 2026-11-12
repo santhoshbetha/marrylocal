@@ -1,0 +1,428 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+.font-custom {
+  font-family: 'Sriracha', sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Semantic icon palette
+   Standalone Lucide icons inherit the Future Teal primary accent. Icons that
+   already declare a text color, or that sit inside controls and destructive
+   menus, keep their contextual foreground so contrast is never compromised.
+--------------------------------------------------------------------------- */
+svg.lucide:where(:not([class*='text-'])) {
+  color: var(--primary);
+}
+
+svg.lucide {
+  transition: color 200ms ease;
+}
+
+button svg.lucide:where(:not([class*='text-'])),
+[data-slot='button'] svg.lucide:where(:not([class*='text-'])),
+.bg-primary svg.lucide:where(:not([class*='text-'])),
+.bg-secondary svg.lucide:where(:not([class*='text-'])),
+.bg-destructive svg.lucide:where(:not([class*='text-'])),
+[role='menuitem'].text-destructive svg.lucide:where(:not([class*='text-'])),
+.text-destructive svg.lucide:where(:not([class*='text-'])),
+.text-destructive-foreground svg.lucide:where(:not([class*='text-'])),
+.text-white svg.lucide:where(:not([class*='text-'])),
+.text-primary-foreground svg.lucide:where(:not([class*='text-'])) {
+  color: currentColor;
+}
+
+@media (max-width: 539.98px) {
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 719.98px) {
+  .table-responsive-sm {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 991.98px) {
+  .table-responsive-md {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 1139.98px) {
+  .table-responsive-lg {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+@media (max-width: 1439.98px) {
+  .table-responsive-xl {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+.table-responsive-xxl {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Addons */
+.shopping-cart .product-item .product-thumb,
+.shopping-cart .product-item .product-info,
+.wishlist-table .product-item .product-thumb,
+.wishlist-table .product-item .product-info,
+.order-table .product-item .product-thumb,
+.order-table .product-item .product-info {
+  display: table-cell;
+  vertical-align: top;
+}
+
+.shopping-cart .product-item .product-title,
+.wishlist-table .product-item .product-title,
+.order-table .product-item .product-title {
+  margin-bottom: 6px;
+  padding-top: 5px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+:root {
+  color-scheme: dark;
+  --font-sans: DM Sans, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 0.5rem;
+  --shadow-x: 0px;
+  --shadow-y: 4px;
+  --shadow-blur: 0px;
+  --shadow-spread: 0px;
+  --shadow-opacity: 0.11;
+  --shadow-color: #5a483f;
+  --shadow-2xs: 0px 4px 0px 0px hsl(20 17.6471% 30% / 0.06);
+  --shadow-xs: 0px 4px 0px 0px hsl(20 17.6471% 30% / 0.06);
+  --shadow-sm:
+    0px 4px 0px 0px hsl(20 17.6471% 30% / 0.11), 0px 1px 2px -1px hsl(20 17.6471% 30% / 0.11);
+  --shadow:
+    0px 4px 0px 0px hsl(20 17.6471% 30% / 0.11), 0px 1px 2px -1px hsl(20 17.6471% 30% / 0.11);
+  --shadow-md:
+    0px 4px 0px 0px hsl(20 17.6471% 30% / 0.11), 0px 2px 4px -1px hsl(20 17.6471% 30% / 0.11);
+  --shadow-lg:
+    0px 4px 0px 0px hsl(20 17.6471% 30% / 0.11), 0px 4px 6px -1px hsl(20 17.6471% 30% / 0.11);
+  --shadow-xl:
+    0px 4px 0px 0px hsl(20 17.6471% 30% / 0.11), 0px 8px 10px -1px hsl(20 17.6471% 30% / 0.11);
+  --shadow-2xl: 0px 4px 0px 0px hsl(20 17.6471% 30% / 0.28);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+/* ROOT APP ENFORCED DARK THEME FALLBACK */
+.dark {
+  color-scheme: dark;
+}
+
+/* Shared layout tokens for every palette. */
+.theme-light-green,
+.theme-dark-amber,
+.theme-dark-teal {
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+/* Shared dark accents. */
+.theme-dark-amber,
+.theme-dark-teal {
+  --destructive: hsl(0 60% 50%);
+  --destructive-foreground: hsl(160 20% 98%);
+
+  --chart-1: var(--primary);
+  --chart-2: hsl(199 89% 48%);
+  --chart-3: hsl(262 83% 68%);
+  --chart-4: hsl(172 65% 50%);
+  --chart-5: hsl(35 75% 60%);
+}
+
+/* THEME: LIGHT GREEN */
+.theme-light-green {
+  --color-background: hsl(160 20% 98%);
+  --color-foreground: hsl(165 40% 12%);
+  --color-card: hsl(160 20% 96%);
+  --color-card-foreground: hsl(165 40% 10%);
+  --color-popover: hsl(160 20% 98%);
+  --color-popover-foreground: hsl(165 40% 12%);
+  --color-primary: hsl(172 65% 34%);
+  --color-primary-foreground: hsl(160 20% 98%);
+  --color-secondary: hsl(168 25% 88%);
+  --color-secondary-foreground: hsl(172 65% 20%);
+  --color-muted: hsl(160 15% 92%);
+  --color-muted-foreground: hsl(165 15% 40%);
+  --color-accent: hsl(172 45% 90%);
+  --color-accent-foreground: hsl(172 65% 25%);
+  --color-border: hsl(160 15% 88%);
+  --color-input: hsl(160 15% 88%);
+  --color-ring: hsl(172 65% 34%);
+
+  --destructive: hsl(0 65% 45%);
+  --destructive-foreground: hsl(160 20% 98%);
+  --chart-1: hsl(172 65% 34%);
+  --chart-2: hsl(168 45% 48%);
+  --chart-3: hsl(190 55% 38%);
+  --chart-4: hsl(145 45% 42%);
+  --chart-5: hsl(35 75% 52%);
+
+  /* Aliases consumed by the @theme inline utility mapping. */
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+  --popover: var(--color-popover);
+  --popover-foreground: var(--color-popover-foreground);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
+}
+
+/* THEME A: OPENPROFILE WARM AMBER / GOLD (NEW DEFAULT DARK THEME) */
+.theme-dark-amber,
+:root:not([class*='theme-']) {
+  --color-background: hsl(24 10% 8%);
+  --color-foreground: hsl(40 20% 96%);
+  --color-card: hsl(24 10% 11%);
+  --color-card-foreground: hsl(40 20% 96%);
+  --color-popover: hsl(24 10% 9%);
+  --color-popover-foreground: hsl(40 20% 96%);
+  --color-primary: hsl(45 93% 47%);
+  --color-primary-foreground: hsl(24 10% 10%);
+  --color-secondary: hsl(24 10% 17%);
+  --color-secondary-foreground: hsl(40 20% 92%);
+  --color-muted: hsl(24 10% 15%);
+  --color-muted-foreground: hsl(30 10% 62%);
+  --color-accent: hsl(42 60% 18%);
+  --color-accent-foreground: hsl(45 93% 75%);
+  --color-border: hsl(24 10% 18%);
+  --color-input: hsl(24 10% 18%);
+  --color-ring: hsl(45 93% 47%);
+
+  /* Aliases consumed by the @theme inline utility mapping. */
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+  --popover: var(--color-popover);
+  --popover-foreground: var(--color-popover-foreground);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
+}
+
+/* THEME: DARK TEAL (FUTURE TEAL) */
+.theme-dark-teal {
+  --color-background: hsl(165 35% 8%);
+  --color-foreground: hsl(160 20% 98%);
+  --color-card: hsl(165 30% 11%);
+  --color-card-foreground: hsl(160 20% 95%);
+  --color-popover: hsl(165 35% 8%);
+  --color-popover-foreground: hsl(160 20% 98%);
+  --color-primary: hsl(172 65% 42%);
+  --color-primary-foreground: hsl(165 35% 8%);
+  --color-secondary: hsl(165 20% 18%);
+  --color-secondary-foreground: hsl(160 20% 90%);
+  --color-muted: hsl(165 20% 16%);
+  --color-muted-foreground: hsl(165 10% 65%);
+  --color-accent: hsl(172 45% 20%);
+  --color-accent-foreground: hsl(172 65% 85%);
+  --color-border: hsl(165 20% 18%);
+  --color-input: hsl(165 20% 18%);
+  --color-ring: hsl(172 65% 42%);
+
+  /* Aliases consumed by the @theme inline utility mapping. */
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --card: var(--color-card);
+  --card-foreground: var(--color-card-foreground);
+  --popover: var(--color-popover);
+  --popover-foreground: var(--color-popover-foreground);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --secondary: var(--color-secondary);
+  --secondary-foreground: var(--color-secondary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-foreground);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not([disabled]),
+  [role='button']:not([disabled]) {
+    cursor: pointer;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Homepage celebration particles
+   Stacking order inside the hero card: card background -> particles (z-0) ->
+   content (relative z-10). Transforms only use translate3d/scale so each node
+   can be promoted to its own compositor layer. Motion is disabled for users
+   who prefer reduced motion.
+--------------------------------------------------------------------------- */
+@keyframes celebrate-float-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.38;
+  }
+  50% {
+    transform: translate3d(0, -26px, 0) scale(1.08);
+    opacity: 0.72;
+  }
+}
+
+@keyframes celebrate-float-medium {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.34;
+  }
+  33% {
+    transform: translate3d(10px, -18px, 0) scale(1.12);
+    opacity: 0.68;
+  }
+  66% {
+    transform: translate3d(-6px, -8px, 0) scale(0.96);
+    opacity: 0.5;
+  }
+}
+
+@keyframes celebrate-float-fast {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.42;
+  }
+  50% {
+    transform: translate3d(-12px, -20px, 0) scale(1.16);
+    opacity: 0.8;
+  }
+}
+
+.celebrate-node {
+  position: absolute;
+  display: block;
+  border-radius: 9999px;
+  pointer-events: none;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
+.celebrate-sparkle {
+  border-radius: 1px;
+}
+
+.celebrate-float-slow {
+  animation: celebrate-float-slow 15s ease-in-out infinite;
+}
+
+.celebrate-float-medium {
+  animation: celebrate-float-medium 11s ease-in-out infinite;
+}
+
+.celebrate-float-fast {
+  animation: celebrate-float-fast 7.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-float-slow,
+  .celebrate-float-medium,
+  .celebrate-float-fast {
+    animation: none;
+  }
+}
