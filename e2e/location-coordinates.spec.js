@@ -40,21 +40,20 @@ test('manual coordinates reject points beyond 150km and save valid points', asyn
 
   await seedSession(page);
 
+  await page.route('**/api/v1/profiles/me/location', async route => {
+    patchPayload = route.request().postDataJSON();
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'success',
+        data: { profile: { ...baseProfile, ...patchPayload } },
+      }),
+    });
+  });
+
   await page.route('**/api/v1/profiles/me', async route => {
-    if (route.request().method() === 'PATCH') {
-      patchPayload = route.request().postDataJSON();
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          status: 'success',
-          data: { profile: { ...baseProfile, ...patchPayload } },
-        }),
-      });
-      return;
-    }
-
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -89,17 +88,17 @@ test('manual coordinates reject points beyond 150km and save valid points', asyn
   await expect(page.getByRole('heading', { name: 'Manual coordinates' })).toBeVisible();
 
   // Delhi is well beyond 150 km from Bangalore's city anchor.
-  await page.locator('#manual-latitude').fill('28.6139');
-  await page.locator('#manual-longitude').fill('77.2090');
-  await page.getByRole('button', { name: /Verify and Lock Coordinates/i }).click();
+  await page.locator('#primary-latitude').fill('28.6139');
+  await page.locator('#primary-longitude').fill('77.2090');
+  await page.getByRole('button', { name: /Use Manual Coordinates/i }).click();
 
   await expect(page.getByText(/That point is/i).last()).toBeVisible();
   expect(patchPayload).toBeNull();
 
   // A nearby Bangalore point passes the Haversine gate.
-  await page.locator('#manual-latitude').fill('12.9352');
-  await page.locator('#manual-longitude').fill('77.6245');
-  await page.getByRole('button', { name: /Verify and Lock Coordinates/i }).click();
+  await page.locator('#primary-latitude').fill('12.9352');
+  await page.locator('#primary-longitude').fill('77.6245');
+  await page.getByRole('button', { name: /Use Manual Coordinates/i }).click();
 
   await expect.poll(() => patchPayload).not.toBeNull();
   expect(patchPayload).toMatchObject({ latitude: 12.9352, longitude: 77.6245 });

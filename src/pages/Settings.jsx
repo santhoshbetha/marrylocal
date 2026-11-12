@@ -15,6 +15,7 @@ import {
   MapPin,
   Palette,
   Phone,
+  Receipt,
   RefreshCw,
   Search,
   Settings as SettingsIcon,
@@ -251,10 +252,275 @@ function profileName(profile) {
   return name || profile?.user_handle || 'Member';
 }
 
+function formatInr(value) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+}
+
+function normalizeLocationPair(state, city) {
+  const normalizedState = String(state || '')
+    .trim()
+    .toLowerCase();
+  const normalizedCity = String(city || '')
+    .trim()
+    .toLowerCase();
+
+  return normalizedState && normalizedCity ? `${normalizedState}|${normalizedCity}` : null;
+}
+
+function activeSettingsLocationPairs(profile, excludeKey) {
+  const pairs = [];
+
+  if (excludeKey !== 'primary' && profile?.state && profile?.city) {
+    pairs.push({
+      key: 'primary',
+      label: 'Primary Location',
+      state: profile.state,
+      city: profile.city,
+    });
+  }
+
+  if (
+    excludeKey !== 'location_2' &&
+    profile?.location_2_active &&
+    profile?.location_2_state &&
+    profile?.location_2_city
+  ) {
+    pairs.push({
+      key: 'location_2',
+      label: 'Location 2',
+      state: profile.location_2_state,
+      city: profile.location_2_city,
+    });
+  }
+
+  if (
+    excludeKey !== 'location_3' &&
+    profile?.location_3_active &&
+    profile?.location_3_state &&
+    profile?.location_3_city
+  ) {
+    pairs.push({
+      key: 'location_3',
+      label: 'Location 3',
+      state: profile.location_3_state,
+      city: profile.location_3_city,
+    });
+  }
+
+  return pairs;
+}
+
+function duplicateSettingsLocation(profile, slotKey, state, city) {
+  const target = normalizeLocationPair(state, city);
+  if (!target) return null;
+
+  return (
+    activeSettingsLocationPairs(profile, slotKey).find(
+      pair => normalizeLocationPair(pair.state, pair.city) === target,
+    ) ?? null
+  );
+}
+
+function SecondaryLocationCard({ profile, slotKey, label }) {
+  const queryClient = useQueryClient();
+  const { updateProfile } = useAuthStore();
+  const city = profile?.[`${slotKey}_city`] || '';
+  const state = profile?.[`${slotKey}_state`] || '';
+  const locked = Boolean(profile?.[`${slotKey}_change_locked`]);
+  const expiresAt = profile?.[`${slotKey}_expires_at`];
+  const allowChangeAt = profile?.[`${slotKey}_allow_change_at`];
+  const [selectedState, setSelectedState] = useState(state);
+  const [selectedCity, setSelectedCity] = useState(city);
+
+  useEffect(() => {
+    setSelectedState(state);
+    setSelectedCity(city);
+  }, [state, city]);
+
+  const states = useMemo(
+    () => [...new Set(cities.map(item => item.state))].filter(Boolean).sort(),
+    [],
+  );
+  const cityOptions = useMemo(
+    () =>
+      cities
+        .filter(item => item.state === selectedState)
+        .map(item => {
+          const conflict = duplicateSettingsLocation(profile, slotKey, item.state, item.name);
+
+          return {
+            name: item.name,
+            disabled: Boolean(conflict),
+            reason: conflict ? `(Already ${conflict.label})` : null,
+          };
+        }),
+    [profile, selectedState, slotKey],
+  );
+
+  const selectedConflict = duplicateSettingsLocation(profile, slotKey, selectedState, selectedCity);
+
+  const mutation = useMutation({
+    mutationFn: payload => apiClient.patch('/api/v1/profiles/me/location', payload),
+    onSuccess: response => {
+      const updated = response.data?.data?.profile ?? response.data?.profile;
+      if (updated) updateProfile(updated);
+      queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      toast.success(`${label} updated`);
+    },
+    onError: error => {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.payload?.message ||
+          error?.message ||
+          `Unable to update ${label}.`,
+      );
+    },
+  });
+
+  const save = event => {
+    event.preventDefault();
+
+    if (locked) {
+      toast.error('This location can only be changed once every 30 days.');
+      return;
+    }
+
+    if (!selectedState || !selectedCity) {
+      toast.error('Select a state and city first.');
+      return;
+    }
+
+    if (selectedConflict) {
+      toast.error(`That city is already assigned to ${selectedConflict.label}.`);
+      return;
+    }
+
+    const coordinates = coords.find(item => item.city === selectedCity)?.coords;
+
+    if (!coordinates) {
+      toast.error('City coordinates are unavailable.');
+      return;
+    }
+
+    mutation.mutate({
+      slot: slotKey,
+      state: selectedState,
+      city: selectedCity,
+      latitude: coordinates.lat,
+      longitude: coordinates.lng,
+    });
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-foreground">{label}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {city || 'Not set'}
+            {state ? `, ${state}` : ''}
+          </p>
+          {expiresAt ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Subscription expires {readableDate(expiresAt)}
+            </p>
+          ) : null}
+        </div>
+        <span
+          className={`inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${
+            locked
+              ? 'bg-accent text-accent-foreground'
+              : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+          }`}
+        >
+          <Clock3 className="h-3 w-3" />
+          {locked
+            ? `Locked until ${readableDate(allowChangeAt) || 'cooldown ends'}`
+            : 'Eligible to change'}
+        </span>
+      </div>
+
+      <form onSubmit={save} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Select
+          value={selectedState}
+          onValueChange={value => {
+            setSelectedState(value);
+            setSelectedCity('');
+          }}
+          disabled={locked}
+        >
+          <SelectTrigger className="w-full rounded-xl">
+            <SelectValue placeholder="Choose state" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {states.map(item => (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={selectedCity}
+          onValueChange={setSelectedCity}
+          disabled={locked || !selectedState}
+        >
+          <SelectTrigger className="w-full rounded-xl">
+            <SelectValue placeholder={selectedState ? 'Choose city' : 'Choose state first'} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {cityOptions.map(item => (
+                <SelectItem key={item.name} value={item.name} disabled={item.disabled}>
+                  {item.name}
+                  {item.reason ? ` ${item.reason}` : ''}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        {selectedConflict ? (
+          <p className="text-xs font-medium text-destructive sm:col-span-2">
+            This city is already assigned to {selectedConflict.label}.
+          </p>
+        ) : null}
+
+        <Button
+          type="submit"
+          disabled={
+            locked ||
+            mutation.isPending ||
+            !selectedState ||
+            !selectedCity ||
+            Boolean(selectedConflict)
+          }
+          className="rounded-xl bg-primary px-5 font-bold text-primary-foreground hover:bg-primary/90 sm:col-span-2"
+        >
+          {mutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="mr-2 h-4 w-4" />
+          )}
+          Update {label}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 function Settings() {
   const { currentUser, updateProfile } = useAuthStore();
   const queryClient = useQueryClient();
   const [locationOpen, setLocationOpen] = useState(false);
+  const [activeInvoice, setActiveInvoice] = useState(null);
   const [selectedState, setSelectedState] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [darkVariant, setDarkVariant] = useState(readDarkVariant);
@@ -428,6 +694,25 @@ function Settings() {
     });
   };
 
+  const updateLocationMutation = useMutation({
+    mutationFn: async payload => apiClient.patch('/api/v1/profiles/me/location', payload),
+    onSuccess: response => {
+      const updatedProfile =
+        response.data?.data?.profile ?? response.data?.profile ?? response.data;
+      if (updatedProfile) updateProfile(updatedProfile);
+      queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      toast.success('Location updated successfully!');
+    },
+    onError: error => {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.payload?.message ||
+          error?.message ||
+          'Unable to update your location.',
+      );
+    },
+  });
+
   const updateSettingsMutation = useMutation({
     mutationFn: async updatedPayload => apiClient.patch('/api/v1/profiles/me', updatedPayload),
     onSuccess: response => {
@@ -530,14 +815,50 @@ function Settings() {
 
   const billingTransactions = billingResponse?.transactions ?? [];
 
+  const { data: invoicesResponse, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['billing', 'invoices'],
+    queryFn: async () => {
+      const token = window.localStorage.getItem('marrylocal.auth.token');
+      const response = await window.fetch('/api/v1/billing/invoices', {
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+        cache: 'no-store',
+      });
+
+      if (!response.ok) return { invoices: [] };
+      const payload = await response.json();
+      return payload?.data ?? payload;
+    },
+    staleTime: 30_000,
+  });
+
+  const invoices = invoicesResponse?.invoices ?? [];
+
   const states = useMemo(
     () => [...new Set(cities.map(city => city.state))].filter(Boolean).sort(),
     [],
   );
 
   const cityOptions = useMemo(
-    () => cities.filter(city => city.state === selectedState).map(city => city.name),
-    [selectedState],
+    () =>
+      cities
+        .filter(city => city.state === selectedState)
+        .map(city => {
+          const conflict = duplicateSettingsLocation(profile, 'primary', city.state, city.name);
+
+          return {
+            name: city.name,
+            disabled: Boolean(conflict),
+            reason: conflict ? `(Already ${conflict.label})` : null,
+          };
+        }),
+    [profile, selectedState],
+  );
+
+  const primarySelectedConflict = duplicateSettingsLocation(
+    profile,
+    'primary',
+    selectedState,
+    selectedCity,
   );
 
   const coordinates = useMemo(
@@ -568,12 +889,16 @@ function Settings() {
       return;
     }
 
-    updateSettingsMutation.mutate(
+    if (primarySelectedConflict) {
+      toast.error(`That city is already assigned to ${primarySelectedConflict.label}.`);
+      return;
+    }
+
+    updateLocationMutation.mutate(
       {
-        profile: {
-          state: selectedState,
-          city: selectedCity,
-        },
+        slot: 'primary',
+        state: selectedState,
+        city: selectedCity,
         latitude: coordinates.lat,
         longitude: coordinates.lng,
       },
@@ -1037,6 +1362,17 @@ function Settings() {
               <span className="font-semibold text-muted-foreground">{nextLocationChange}</span>
             </p>
           )}
+
+          {profile?.location_2_active || profile?.location_3_active ? (
+            <div className="mt-5 grid gap-4">
+              {profile?.location_2_active ? (
+                <SecondaryLocationCard profile={profile} slotKey="location_2" label="Location 2" />
+              ) : null}
+              {profile?.location_3_active ? (
+                <SecondaryLocationCard profile={profile} slotKey="location_3" label="Location 3" />
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <Separator className="bg-border/60" />
@@ -1307,7 +1643,134 @@ function Settings() {
             </Table>
           </div>
         </section>
+
+        <section
+          data-testid="invoices-receipts"
+          className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Receipt className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Invoices &amp; Receipts</h2>
+              <p className="text-sm text-muted-foreground">
+                Itemized annual fees and monthly addon invoices.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-2xl border border-border/60">
+            <Table>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="border-border/60 hover:bg-transparent">
+                  <TableHead className="text-foreground">Invoice</TableHead>
+                  <TableHead className="text-foreground">Description</TableHead>
+                  <TableHead className="text-foreground">Period</TableHead>
+                  <TableHead className="text-right text-foreground">Total</TableHead>
+                  <TableHead className="text-right text-foreground">Receipt</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoicesLoading ? (
+                  <TableRow className="border-border/60">
+                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />
+                    </TableCell>
+                  </TableRow>
+                ) : invoices.length === 0 ? (
+                  <TableRow className="border-border/60">
+                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      No invoices yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  invoices.map(invoice => (
+                    <TableRow key={invoice.id} className="border-border/60 hover:bg-muted/30">
+                      <TableCell className="font-mono text-xs font-bold text-foreground">
+                        {invoice.invoice_number}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{invoice.description}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {readableDate(invoice.period_start) || '—'} –{' '}
+                        {readableDate(invoice.period_end) || '—'}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-foreground">
+                        {formatInr(invoice.total_amount_inr)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl border-border/60"
+                          onClick={() => setActiveInvoice(invoice)}
+                        >
+                          View / Download
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
       </div>
+
+      <Dialog open={Boolean(activeInvoice)} onOpenChange={open => !open && setActiveInvoice(null)}>
+        <DialogContent className="rounded-3xl sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <Receipt className="h-5 w-5 text-primary" />
+              {activeInvoice?.invoice_number}
+            </DialogTitle>
+            <DialogDescription>{activeInvoice?.description}</DialogDescription>
+          </DialogHeader>
+
+          {activeInvoice ? (
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between border-b border-border/60 pb-2">
+                <span className="text-muted-foreground">Base amount</span>
+                <span className="font-semibold text-foreground">
+                  {formatInr(activeInvoice.base_amount_inr)}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-border/60 pb-2">
+                <span className="text-muted-foreground">GST at 18%</span>
+                <span className="font-semibold text-foreground">
+                  {formatInr(activeInvoice.gst_amount_inr)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-bold text-foreground">Total paid</span>
+                <span className="font-black text-foreground">
+                  {formatInr(activeInvoice.total_amount_inr)}
+                </span>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/40 p-3 text-muted-foreground">
+                Period: {readableDate(activeInvoice.period_start) || '—'} –{' '}
+                {readableDate(activeInvoice.period_end) || '—'}
+              </div>
+
+              {activeInvoice.pdf_url ? (
+                <Button
+                  asChild
+                  className="w-full rounded-xl bg-primary font-bold text-primary-foreground"
+                >
+                  <a href={activeInvoice.pdf_url} target="_blank" rel="noopener noreferrer">
+                    Download PDF receipt
+                  </a>
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  A downloadable PDF will appear here once the payment provider finishes processing.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={locationOpen} onOpenChange={setLocationOpen}>
         <DialogContent className="sm:max-w-[540px] rounded-3xl">
@@ -1372,8 +1835,9 @@ function Settings() {
                   <SelectContent>
                     <SelectGroup>
                       {cityOptions.map(city => (
-                        <SelectItem key={city} value={city}>
-                          {city}
+                        <SelectItem key={city.name} value={city.name} disabled={city.disabled}>
+                          {city.name}
+                          {city.reason ? ` ${city.reason}` : ''}
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -1388,6 +1852,12 @@ function Settings() {
               </p>
             )}
 
+            {primarySelectedConflict && (
+              <p className="mt-3 text-sm font-medium text-destructive">
+                This city is already assigned to {primarySelectedConflict.label}.
+              </p>
+            )}
+
             <DialogFooter className="mt-6 gap-3">
               <DialogClose asChild>
                 <Button type="button" variant="outline" className="rounded-xl px-4">
@@ -1398,15 +1868,16 @@ function Settings() {
               <Button
                 type="submit"
                 disabled={
-                  updateSettingsMutation.isPending ||
+                  updateLocationMutation.isPending ||
                   locationLocked ||
                   !selectedState ||
                   !selectedCity ||
-                  !coordinates
+                  !coordinates ||
+                  Boolean(primarySelectedConflict)
                 }
                 className="rounded-xl bg-primary px-5 font-bold text-primary-foreground hover:bg-primary/90"
               >
-                {updateSettingsMutation.isPending ? (
+                {updateLocationMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Check className="mr-2 h-4 w-4" />

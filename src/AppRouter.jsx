@@ -86,7 +86,7 @@ import FAQ from '@/pages/FAQ';
 import LoginPage from '@/pages/auth/LoginPage';
 import PageNotFound from '@/pages/404Page';
 import Profile from '@/pages/Profile';
-import Verify from '@/pages/Verification';
+import Verify from '@/pages/Verify';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ChangePassword from '@/pages/ChangePassword';
 import Settings from '@/pages/Settings';
@@ -191,6 +191,8 @@ export default function AppRouter() {
           <Route path="/verification" element={<Verify />} />
           <Route path="/myspace" element={<Navigate to="/dashboard" replace />} />
           <Route path="/location" element={<Location />} />
+          <Route path="/dashboard/location" element={<Navigate to="/location" replace />} />
+          <Route path="/dashboard/addons" element={<Navigate to="/addons" replace />} />
           <Route path="/search" element={<Navigate to="/dashboard/search-user" replace />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/dashboard/profile" element={<Navigate to="/profile" replace />} />

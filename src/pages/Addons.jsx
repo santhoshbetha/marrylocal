@@ -55,13 +55,88 @@ function isActiveAddon(profile, key) {
     return Boolean(profile?.community_search_active || addons.communitySearch);
   }
   if (key === 'location2') {
-    return Boolean(profile?.multi_location_slots?.location2?.city || addons?.location2?.city2);
+    return Boolean(
+      profile?.location_2_active === true ||
+        profile?.location2active === true ||
+        profile?.multi_location_slots?.location2?.city ||
+        addons?.location2?.city2,
+    );
   }
   if (key === 'location3') {
-    return Boolean(profile?.multi_location_slots?.location3?.city || addons?.location3?.city3);
+    return Boolean(
+      profile?.location_3_active === true ||
+        profile?.location3active === true ||
+        profile?.multi_location_slots?.location3?.city ||
+        addons?.location3?.city3,
+    );
   }
 
   return false;
+}
+
+function normalizeLocationPair(state, city) {
+  const normalizedState = String(state || '')
+    .trim()
+    .toLowerCase();
+  const normalizedCity = String(city || '')
+    .trim()
+    .toLowerCase();
+
+  return normalizedState && normalizedCity ? `${normalizedState}|${normalizedCity}` : null;
+}
+
+function activeLocationPairs(profile, excludeKey) {
+  const pairs = [];
+
+  if (excludeKey !== 'primary' && profile?.state && profile?.city) {
+    pairs.push({
+      key: 'primary',
+      label: 'Primary Location',
+      state: profile.state,
+      city: profile.city,
+    });
+  }
+
+  if (
+    excludeKey !== 'location2' &&
+    profile?.location_2_active &&
+    profile?.location_2_state &&
+    profile?.location_2_city
+  ) {
+    pairs.push({
+      key: 'location2',
+      label: 'Location 2',
+      state: profile.location_2_state,
+      city: profile.location_2_city,
+    });
+  }
+
+  if (
+    excludeKey !== 'location3' &&
+    profile?.location_3_active &&
+    profile?.location_3_state &&
+    profile?.location_3_city
+  ) {
+    pairs.push({
+      key: 'location3',
+      label: 'Location 3',
+      state: profile.location_3_state,
+      city: profile.location_3_city,
+    });
+  }
+
+  return pairs;
+}
+
+function duplicateLocation(profile, key, state, city) {
+  const target = normalizeLocationPair(state, city);
+  if (!target) return null;
+
+  return (
+    activeLocationPairs(profile, key).find(
+      pair => normalizeLocationPair(pair.state, pair.city) === target,
+    ) ?? null
+  );
 }
 
 function formatInr(value) {
@@ -143,8 +218,15 @@ function Addons() {
   const cityOptions = key =>
     cities
       .filter(city => city.state === locationForms[key].state)
-      .filter(city => city.name !== profile?.city)
-      .map(city => city.name);
+      .map(city => {
+        const conflict = duplicateLocation(profile, key, city.state, city.name);
+
+        return {
+          name: city.name,
+          disabled: Boolean(conflict),
+          reason: conflict ? `(Already ${conflict.label})` : null,
+        };
+      });
 
   const initializeCheckout = useMutation({
     mutationFn: async selectedItems => {
@@ -207,6 +289,12 @@ function Addons() {
       return;
     }
 
+    const conflict = duplicateLocation(profile, key, form.state, form.city);
+    if (conflict) {
+      toast.error(`That city is already assigned to ${conflict.label}.`);
+      return;
+    }
+
     setSelection(key, true);
   };
 
@@ -222,18 +310,43 @@ function Addons() {
   const activeLocation2 = isActiveAddon(profile, 'location2');
   const activeLocation3 = isActiveAddon(profile, 'location3');
 
+  const selectionWarnings = ['location2', 'location3']
+    .map(key => {
+      const form = locationForms[key];
+      if (!selections[key] || !form.state || !form.city) return null;
+      const conflict = duplicateLocation(profile, key, form.state, form.city);
+      return conflict
+        ? `${form.city} is already assigned to ${conflict.label}. Choose a different city.`
+        : null;
+    })
+    .filter(Boolean);
+
   const selectedItems = useMemo(
     () => ({
       community_search: communitySearchEnabled && selections.community_search && !activeCommunity,
       location2:
-        selections.location2 && !activeLocation2
+        selections.location2 &&
+        !activeLocation2 &&
+        !duplicateLocation(
+          profile,
+          'location2',
+          locationForms.location2.state,
+          locationForms.location2.city,
+        )
           ? {
               state: locationForms.location2.state,
               city: locationForms.location2.city,
             }
           : null,
       location3:
-        selections.location3 && !activeLocation3
+        selections.location3 &&
+        !activeLocation3 &&
+        !duplicateLocation(
+          profile,
+          'location3',
+          locationForms.location3.state,
+          locationForms.location3.city,
+        )
           ? {
               state: locationForms.location3.state,
               city: locationForms.location3.city,
@@ -246,6 +359,7 @@ function Addons() {
       activeLocation3,
       communitySearchEnabled,
       locationForms,
+      profile,
       selections,
     ],
   );
@@ -259,7 +373,7 @@ function Addons() {
   const subtotal = selectedCount * ADDON_UNIT_PRICE;
   const gst = Math.round(subtotal * GST_RATE);
   const total = subtotal + gst;
-  const hasSelection = selectedCount > 0;
+  const hasSelection = selectedCount > 0 && selectionWarnings.length === 0;
 
   const initiateCheckout = () => {
     if (!hasSelection) {
@@ -408,14 +522,25 @@ function Addons() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectGroup>
-                            {cityOptions(key).map(city => (
-                              <SelectItem key={city} value={city}>
-                                {city}
+                            {cityOptions(key).map(option => (
+                              <SelectItem
+                                key={option.name}
+                                value={option.name}
+                                disabled={option.disabled}
+                              >
+                                {option.name}
+                                {option.reason ? ` ${option.reason}` : ''}
                               </SelectItem>
                             ))}
                           </SelectGroup>
                         </SelectContent>
                       </Select>
+                      {form.city && duplicateLocation(profile, key, form.state, form.city) ? (
+                        <p className="text-xs font-medium text-destructive">
+                          This city is already assigned to{' '}
+                          {duplicateLocation(profile, key, form.state, form.city).label}.
+                        </p>
+                      ) : null}
                     </div>
 
                     <Button
@@ -455,6 +580,14 @@ function Addons() {
             <p className="text-xs text-muted-foreground">
               The server recalculates every amount before payment.
             </p>
+            {selectionWarnings.map(warning => (
+              <p
+                key={warning}
+                className="rounded-xl border border-destructive/20 bg-destructive/10 p-2 text-xs font-medium text-destructive"
+              >
+                {warning}
+              </p>
+            ))}
           </div>
 
           <Button

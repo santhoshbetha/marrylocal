@@ -88,11 +88,11 @@ test('verification page submits a multipart document and shows the review banner
   await expect(page.getByRole('heading', { name: 'Identity verification' })).toBeVisible();
 
   await page.getByRole('combobox').click();
-  await page.getByRole('option', { name: 'Aadhaar Card' }).click();
-  await page.locator('#document_number').fill('123456789012');
+  await page.getByRole('option', { name: 'Indian Passport' }).click();
+  await page.locator('#document_number').fill('P1234567');
 
   await page.setInputFiles('[data-testid="verification-file-input"]', {
-    name: 'aadhaar.png',
+    name: 'passport.png',
     mimeType: 'image/png',
     buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
   });
@@ -108,5 +108,5 @@ test('verification page submits a multipart document and shows the review banner
   expect(uploadRequest).not.toBeNull();
   expect(uploadRequest.method()).toBe('POST');
   expect(uploadRequest.headers()['content-type']).toContain('multipart/form-data');
-  expect(uploadRequest.postData() || '').toContain('aadhaar');
+  expect(uploadRequest.postData() || '').toContain('passport');
 });

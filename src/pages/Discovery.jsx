@@ -1,4 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, MapPin, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProfileCard } from '@/components/ProfileCard';
@@ -7,6 +9,7 @@ import { PaymentGateBanner } from '@/components/PaymentGateBanner';
 import { VerificationGateBanner } from '@/components/VerificationGateBanner';
 import { flattenDiscoveryPages, useProfileDiscovery } from '@/hooks/useDiscovery';
 import { useAuthStore } from '@/store/authStore';
+import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +28,7 @@ const OPTION_CLASS = 'text-foreground bg-card font-medium';
 const defaultFilters = {
   radius_km: '100',
   full_city: false,
+  location_slot: 'primary',
   age_from: '',
   age_to: '',
   religion: '',
@@ -46,6 +50,7 @@ function toQueryFilters(values) {
   return {
     full_city: fullCity,
     search_mode: fullCity ? 'full_city' : undefined,
+    location_slot: values.location_slot || 'primary',
     radius_km: fullCity ? undefined : clampRadius(values.radius_km),
     age_from: values.age_from || undefined,
     age_to: values.age_to || undefined,
@@ -57,6 +62,15 @@ function toQueryFilters(values) {
 
 export function Discovery() {
   const currentUser = useAuthStore(state => state.currentUser);
+  const { data: meResponse } = useQuery({
+    queryKey: ['profile', 'me'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/v1/profiles/me');
+      return response.data;
+    },
+    staleTime: 30_000,
+  });
+  const account = meResponse?.data?.profile ?? meResponse?.profile ?? currentUser;
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(() => toQueryFilters(defaultFilters));
   const sentinelRef = useRef(null);
@@ -77,6 +91,39 @@ export function Discovery() {
   const locale = query.data?.pages?.[0]?.locale;
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
   const controlsDisabled = query.isFetching;
+
+  const locationOptions = [
+    {
+      value: 'primary',
+      label: `Primary: ${account?.city || 'Not set'}`,
+      city: account?.city,
+      active: true,
+    },
+    ...(account?.location_2_active
+      ? [
+          {
+            value: 'location_2',
+            label: `Location 2: ${account?.location_2_city || 'Not pinned'}`,
+            city: account?.location_2_city,
+            active: true,
+          },
+        ]
+      : []),
+    ...(account?.location_3_active
+      ? [
+          {
+            value: 'location_3',
+            label: `Location 3: ${account?.location_3_city || 'Not pinned'}`,
+            city: account?.location_3_city,
+            active: true,
+          },
+        ]
+      : []),
+  ];
+
+  const selectedLocation =
+    locationOptions.find(option => option.value === draftFilters.location_slot) ??
+    locationOptions[0];
 
   useEffect(() => {
     if (query.error?.status !== 429) return;
@@ -181,6 +228,34 @@ export function Discovery() {
             />
           </div>
 
+          {locationOptions.length > 1 ? (
+            <div className="grid gap-2">
+              <Label htmlFor="location_slot">Search location</Label>
+              <select
+                id="location_slot"
+                data-testid="discovery-location-slot"
+                value={draftFilters.location_slot}
+                onChange={updateFilter('location_slot')}
+                disabled={controlsDisabled || restricted || verificationRequired}
+                className={SELECT_CLASS}
+              >
+                {locationOptions.map(option => (
+                  <option key={option.value} value={option.value} className={OPTION_CLASS}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {draftFilters.location_slot !== 'primary' && !selectedLocation?.city ? (
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  Pin this location first.{' '}
+                  <Link to="/dashboard/location" className="underline">
+                    Open location editor
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="grid gap-2">
             <Label htmlFor="age_from">Age from</Label>
             <Input
@@ -264,7 +339,8 @@ export function Discovery() {
             <div className="min-w-0">
               <p className="text-sm font-bold text-foreground">Full City search</p>
               <p className="text-sm text-muted-foreground">
-                Bypass the km radius and search every profile in {currentUser?.city || 'your city'}.
+                Bypass the km radius and search every profile in{' '}
+                {selectedLocation?.city || account?.city || 'your city'}.
               </p>
             </div>
             <Switch

@@ -12,6 +12,7 @@ export const adminKeys = {
   all: ['admin'],
   users: filters => ['admin', 'users', filters ?? {}],
   userLookup: () => ['admin', 'user-lookup'],
+  verifications: () => ['admin', 'verifications'],
   settings: () => ['admin', 'settings'],
 };
 
@@ -119,6 +120,29 @@ export async function queueSystemNotification(payload, { signal } = {}) {
 export async function fetchAdminSettings({ signal } = {}) {
   const { data } = await apiClient.get('/api/v1/admin/settings', { signal });
   return data?.data?.settings ?? {};
+}
+
+export async function fetchAdminVerifications({ signal } = {}) {
+  const { data } = await apiClient.get('/api/v1/admin/verifications', { signal });
+  return data?.data?.verifications ?? [];
+}
+
+export async function approveAdminVerification(id, { signal } = {}) {
+  const { data } = await apiClient.post(
+    `/api/v1/admin/verifications/${encodeURIComponent(id)}/approve`,
+    {},
+    { signal },
+  );
+  return data?.data?.verification ?? data?.data;
+}
+
+export async function rejectAdminVerification(id, reason, { signal } = {}) {
+  const { data } = await apiClient.post(
+    `/api/v1/admin/verifications/${encodeURIComponent(id)}/reject`,
+    { reason },
+    { signal },
+  );
+  return data?.data?.verification ?? data?.data;
 }
 
 export async function updateAdminSettings(settings, { signal } = {}) {

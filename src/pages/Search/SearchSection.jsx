@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFormik } from 'formik';
-import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, MapPin, Search as SearchIcon, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -28,6 +29,7 @@ import { PaymentGateBanner } from '@/components/PaymentGateBanner';
 import { VerificationGateBanner } from '@/components/VerificationGateBanner';
 import { flattenDiscoveryPages, useProfileDiscovery } from '@/hooks/useDiscovery';
 import { useAuthStore } from '@/store/authStore';
+import { apiClient } from '@/api/client';
 import { languages } from '@/lib/languages';
 import { communities } from '@/lib/communities';
 import { openProfileInNewTab } from '@/lib/profileNavigation';
@@ -48,6 +50,9 @@ const EDUCATION_LEVELS = ['All', 'High School', 'Plus 2 level', 'Bachelors level
 const RADIUS_OPTIONS = ['10', '25', '50', '75', '100', '200', '300'];
 const MIN_RADIUS_KM = 5;
 const MAX_RADIUS_KM = 300;
+const SELECT_CLASS =
+  'h-10 w-full rounded-xl border border-border/60 bg-card px-3 text-sm text-foreground outline-none transition focus:border-amber-400 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground';
+const OPTION_CLASS = 'text-foreground bg-card font-medium';
 
 function clampRadius(value) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -61,6 +66,7 @@ function initialFilters(currentUser) {
   return {
     radius_km: clampRadius(currentUser?.max_search_distance || 100),
     full_city: false,
+    location_slot: 'primary',
     age_from: '21',
     age_to: '',
     religion: 'All',
@@ -80,6 +86,7 @@ function toQueryFilters(values) {
   return {
     full_city: fullCity,
     search_mode: fullCity ? 'full_city' : undefined,
+    location_slot: values.location_slot || 'primary',
     radius_km: fullCity ? undefined : clampRadius(values.radius_km),
     age_from: values.age_from || undefined,
     age_to: values.age_to || undefined,
@@ -96,6 +103,15 @@ function toQueryFilters(values) {
 export function SearchSection() {
   const navigate = useNavigate();
   const currentUser = useAuthStore(state => state.currentUser);
+  const { data: meResponse } = useQuery({
+    queryKey: ['profile', 'me'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/v1/profiles/me');
+      return response.data;
+    },
+    staleTime: 30_000,
+  });
+  const account = meResponse?.data?.profile ?? meResponse?.profile ?? currentUser;
   const [appliedFilters, setAppliedFilters] = useState(() =>
     toQueryFilters(initialFilters(currentUser)),
   );
@@ -128,6 +144,36 @@ export function SearchSection() {
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
   const controlsDisabled = query.isFetching || restricted;
   const fullCity = Boolean(formik.values.full_city);
+
+  const locationOptions = [
+    {
+      value: 'primary',
+      label: `Primary: ${account?.city || 'Not set'}`,
+      city: account?.city,
+    },
+    ...(account?.location_2_active
+      ? [
+          {
+            value: 'location_2',
+            label: `Location 2: ${account?.location_2_city || 'Not pinned'}`,
+            city: account?.location_2_city,
+          },
+        ]
+      : []),
+    ...(account?.location_3_active
+      ? [
+          {
+            value: 'location_3',
+            label: `Location 3: ${account?.location_3_city || 'Not pinned'}`,
+            city: account?.location_3_city,
+          },
+        ]
+      : []),
+  ];
+
+  const selectedLocation =
+    locationOptions.find(option => option.value === formik.values.location_slot) ??
+    locationOptions[0];
 
   useEffect(() => {
     if (query.error?.status !== 429) return;
@@ -328,6 +374,35 @@ export function SearchSection() {
                     </Select>
                   </div>
 
+                  {locationOptions.length > 1 ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="location_slot">Search location</Label>
+                      <select
+                        id="location_slot"
+                        name="location_slot"
+                        data-testid="search-section-location-slot"
+                        value={formik.values.location_slot}
+                        onChange={formik.handleChange}
+                        disabled={controlsDisabled}
+                        className={SELECT_CLASS}
+                      >
+                        {locationOptions.map(option => (
+                          <option key={option.value} value={option.value} className={OPTION_CLASS}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      {formik.values.location_slot !== 'primary' && !selectedLocation?.city ? (
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                          Pin this location first.{' '}
+                          <Link to="/dashboard/location" className="underline">
+                            Open location editor
+                          </Link>
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   <div className="space-y-2">
                     <Label htmlFor="age_from">Age from</Label>
                     <Input
@@ -386,7 +461,7 @@ export function SearchSection() {
                     <p className="text-sm font-bold text-foreground">Full City search</p>
                     <p className="text-sm text-muted-foreground">
                       Bypass the km radius and search every profile in{' '}
-                      {currentUser?.city || 'your city'}.
+                      {selectedLocation?.city || account?.city || 'your city'}.
                     </p>
                   </div>
                   <Switch
