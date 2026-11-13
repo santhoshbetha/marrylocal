@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { apiClient, API_BASE_URL, describeApiError } from '@/api/client';
 import { useProfileQuery } from '@/hooks/useProfile';
+import { usePeerVerificationChannel } from '@/hooks/usePeerVerificationChannel';
 import { compressImage } from '@/lib/imageCompression';
 import { cn } from '@/lib/utils';
 import { RequestVouchToken } from '@/components/RequestVouchToken';
@@ -245,15 +246,10 @@ function PeerVerificationPanel({ mode }) {
     staleTime: 30_000,
   });
 
-  useEffect(() => {
-    if (mode !== 'peer' || peerVerified) return undefined;
-
-    const interval = window.setInterval(() => {
-      void refetchProfile();
-    }, 10_000);
-
-    return () => window.clearInterval(interval);
-  }, [mode, peerVerified, refetchProfile]);
+  // Live updates replace the old 10-second profile poll. A vouch recorded on a
+  // verifier's device (or an admin grant) is pushed over the authenticated
+  // Phoenix channel.
+  usePeerVerificationChannel({ enabled: mode === 'peer' });
 
   const handleVouchSuccess = async () => {
     await refetchProfile();

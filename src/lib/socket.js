@@ -7,6 +7,7 @@ let heartbeatTimer = null;
 let refCounter = 0;
 let joinRefCounter = 0;
 const subscribers = new Map();
+const openListeners = new Set();
 
 function nextRef() {
   refCounter += 1;
@@ -48,6 +49,14 @@ function connect(token) {
     subscribers.forEach((handlers, topic) => {
       send([String(++joinRefCounter), nextRef(), topic, 'phx_join', {}]);
     });
+
+    openListeners.forEach(listener => {
+      try {
+        listener();
+      } catch {
+        // A listener must never break the socket lifecycle.
+      }
+    });
   };
 
   socket.onmessage = event => {
@@ -81,6 +90,15 @@ function connect(token) {
 
 export function acquireSocket(token) {
   return connect(token);
+}
+
+/**
+ * Registers a callback for every successful (re)connection. Used to refetch
+ * state that may have changed while the socket was down.
+ */
+export function onSocketOpen(listener) {
+  openListeners.add(listener);
+  return () => openListeners.delete(listener);
 }
 
 export function subscribeToTopic(topic, onEvent) {
@@ -122,4 +140,11 @@ export function isSocketConnected() {
 }
 
 export { socketUrl };
-export default { acquireSocket, subscribeToTopic, disconnectSocket, isSocketConnected, socketUrl };
+export default {
+  acquireSocket,
+  onSocketOpen,
+  subscribeToTopic,
+  disconnectSocket,
+  isSocketConnected,
+  socketUrl,
+};
