@@ -62,6 +62,30 @@ test('verification page submits a multipart document and shows the review banner
     });
   });
 
+  await page.route('**/api/v1/vouch/nearest-verifiers', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'success',
+        data: { city: 'Delhi', count: 0, verifiers: [] },
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/vouch/generate-token', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'success',
+        secure_token: 'verification-submit-token',
+        expires_in: 60,
+        data: { secure_token: 'verification-submit-token', expires_in: 60 },
+      }),
+    });
+  });
+
   await page.route('**/api/v1/verifications/submit', async route => {
     uploadRequest = route.request();
     const contentType = route.request().headers()['content-type'] || '';

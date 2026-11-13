@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   Shield,
+  ScanLine,
   UserPen,
   Users,
   WifiOff,
@@ -158,26 +159,51 @@ export function AppNavigation({ children }) {
       });
     }
 
+    const verificationSource = profiledata ?? user ?? {};
+    const idVerified = Boolean(
+      verificationSource.id_verified ??
+        verificationSource.aadhaar_verified ??
+        verificationSource.aadhar_verified ??
+        verificationSource.passport_verified ??
+        verificationSource.license_verified,
+    );
+    const peerVerified = Boolean(verificationSource.peer_verified);
+    const verified = idVerified || peerVerified;
+    const activeVerifier =
+      Boolean(verificationSource.is_peer_verifier) &&
+      Number(verificationSource.vouch_credits_remaining ?? 0) > 0;
+
+    const verifyItem = activeVerifier
+      ? {
+          to: '/verify?tab=scanner',
+          label: 'Verify Peers',
+          icon: ScanLine,
+          end: true,
+          matchPaths: ['/verify', '/verification'],
+        }
+      : verified
+        ? null
+        : { to: '/verify', label: 'Verify', icon: BadgeCheck, end: true };
+
+    const accountItems = [
+      { to: '/profile', label: 'Profile', icon: UserPen, end: true },
+      { to: '/photos', label: 'Photos', icon: Images, end: true },
+      verifyItem,
+      {
+        to: '/dashboard/notifications',
+        label: 'Notifications',
+        icon: Bell,
+        end: true,
+        badge: 'notifications',
+      },
+      { to: '/settings', label: 'Settings', icon: Settings, end: true },
+    ].filter(Boolean);
+
     return [
       { label: 'Discover', items: discoverItems },
-      {
-        label: 'Account',
-        items: [
-          { to: '/profile', label: 'Profile', icon: UserPen, end: true },
-          { to: '/photos', label: 'Photos', icon: Images, end: true },
-          { to: '/verify', label: 'Verify', icon: BadgeCheck, end: true },
-          {
-            to: '/dashboard/notifications',
-            label: 'Notifications',
-            icon: Bell,
-            end: true,
-            badge: 'notifications',
-          },
-          { to: '/settings', label: 'Settings', icon: Settings, end: true },
-        ],
-      },
+      { label: 'Account', items: accountItems },
     ];
-  }, [isAdmin, user]);
+  }, [isAdmin, profiledata, user]);
 
   const mobileItems = useMemo(() => {
     if (isAdmin) return navigationGroups[0]?.items ?? [];

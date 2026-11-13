@@ -107,8 +107,8 @@ export function VerifyPeerScanner({ enabled = false, onVouchSuccess }) {
           Scanning unlocks after verification
         </p>
         <p className="mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
-          Once three local members vouch for you and you have at least one vouch credit, you can
-          scan another member's rotating QR code.
+          Once three local verifiers vouch for you, you become a Peer Verifier with five credits to
+          verify other members in your city.
         </p>
       </div>
     );

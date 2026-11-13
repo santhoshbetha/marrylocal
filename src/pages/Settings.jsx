@@ -1054,6 +1054,49 @@ function Settings() {
           </div>
         </section>
 
+        {profile?.is_peer_verifier && Number(profile?.vouch_credits_remaining ?? 0) > 0 ? (
+          <section
+            data-testid="peer-availability-card"
+            className="bg-card border border-border rounded-3xl p-6 shadow-xs"
+          >
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Shield className="h-5 w-5 text-primary" />
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Peer Verifier Availability</h2>
+                <p className="text-sm text-muted-foreground">
+                  Control whether members in your city can find you and ask you to vouch for them.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-muted/40 p-4">
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground">
+                  {profile?.is_available_to_vouch === false
+                    ? 'Paused — hidden from verifier searches'
+                    : 'Available to verify others'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {profile?.is_available_to_vouch === false
+                    ? 'Turn this back on whenever you are ready to verify someone.'
+                    : `You have ${profile?.vouch_credits_remaining} of 5 vouch credits left.`}
+                </p>
+              </div>
+
+              <Switch
+                data-testid="settings-peer-availability"
+                checked={profile?.is_available_to_vouch !== false}
+                disabled={updateSettingsMutation.isPending}
+                onCheckedChange={value =>
+                  updateSettingsMutation.mutate({ is_available_to_vouch: value })
+                }
+              />
+            </div>
+          </section>
+        ) : null}
+
         <section className="bg-card border border-border rounded-3xl p-6 shadow-xs">
           <div className="mb-5 flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">

@@ -14,14 +14,29 @@ const topicSubscriptions = new Map();
 function applyPeerVerificationPayload(queryClient, payload) {
   if (!payload || typeof payload !== 'object') return;
 
+  const patch = {
+    peer_vouches_received: payload.peer_vouches_received,
+    peer_verified: payload.peer_verified,
+    is_peer_verifier: payload.is_peer_verifier,
+    vouch_credits_remaining: payload.vouch_credits_remaining,
+  };
+
+  // Keep the navigation shell (which reads the auth store) in sync with the
+  // progress card so "Verify Peers" appears without a reload.
+  const definedPatch = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  );
+
+  if (Object.keys(definedPatch).length > 0) {
+    useAuthStore.getState().updateProfile(definedPatch);
+  }
+
   queryClient.setQueryData(PROFILE_ME_KEY, current => {
     if (!current) return current;
 
     return {
       ...current,
-      peer_vouches_received: payload.peer_vouches_received ?? current.peer_vouches_received,
-      peer_verified: payload.peer_verified ?? current.peer_verified,
-      vouch_credits_remaining: payload.vouch_credits_remaining ?? current.vouch_credits_remaining,
+      ...definedPatch,
     };
   });
 }

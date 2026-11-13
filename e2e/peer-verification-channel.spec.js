@@ -149,13 +149,16 @@ test('verification page updates from a channel push and never polls the profile'
   state.profile = {
     ...state.profile,
     peer_vouches_received: 1,
+    peer_verified: true,
+    is_peer_verifier: false,
   };
 
   channelSocket.send(
     channelFrame(topic, 'peer_verification_updated', {
       reason: 'vouch',
       peer_vouches_received: 1,
-      peer_verified: false,
+      peer_verified: true,
+      is_peer_verifier: false,
       vouch_credits_remaining: 0,
     }),
   );
@@ -168,6 +171,7 @@ test('verification page updates from a channel push and never polls the profile'
     ...state.profile,
     peer_vouches_received: 3,
     peer_verified: true,
+    is_peer_verifier: true,
     vouch_credits_remaining: 5,
   };
 
@@ -176,6 +180,7 @@ test('verification page updates from a channel push and never polls the profile'
       reason: 'vouch',
       peer_vouches_received: 3,
       peer_verified: true,
+      is_peer_verifier: true,
       vouch_credits_remaining: 5,
     }),
   );

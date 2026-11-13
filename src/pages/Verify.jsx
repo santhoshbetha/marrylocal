@@ -1,13 +1,16 @@
 import { useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
+  CalendarClock,
   CheckCircle2,
   FileCheck2,
   FileText,
   Loader2,
+  Mail,
   Phone,
   QrCode,
   ScanLine,
@@ -19,6 +22,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -41,6 +54,7 @@ const MAX_FILE_SIZE = 8 * 1024 * 1024;
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const ACCEPTED_LABEL = 'PNG, JPG or WebP';
 const PEER_VOUCH_TARGET = 3;
+const PEER_VERIFIER_CREDITS = 5;
 
 const DOCUMENT_TYPES = [
   { value: 'passport', label: 'Indian Passport' },
@@ -78,11 +92,46 @@ function ProgressSegment({ filled }) {
   );
 }
 
+function MilestoneCard({ testId, title, description, unlocked, filled, total, footer }) {
+  return (
+    <div
+      data-testid={testId}
+      className={cn(
+        'rounded-2xl border p-4 transition-colors',
+        unlocked ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-border/60 bg-muted/20',
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-black text-foreground">{title}</p>
+        {unlocked ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-black text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Unlocked
+          </span>
+        ) : (
+          <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
+            Locked
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
+
+      <div className="mt-3 flex items-center gap-1.5">
+        {Array.from({ length: total }, (_, index) => (
+          <ProgressSegment key={index} filled={filled > index} />
+        ))}
+      </div>
+
+      {footer ? <p className="mt-2 text-xs font-semibold text-muted-foreground">{footer}</p> : null}
+    </div>
+  );
+}
+
 function PeerVouchProgress({ profile }) {
   const count = Number(profile?.peer_vouches_received ?? 0);
   const credits = Number(profile?.vouch_credits_remaining ?? 0);
-  const verified = Boolean(profile?.peer_verified);
-  const filled = Math.min(count, PEER_VOUCH_TARGET);
+  const peerVerified = Boolean(profile?.peer_verified);
+  const isVerifier = Boolean(profile?.is_peer_verifier);
 
   return (
     <div
@@ -102,12 +151,13 @@ function PeerVouchProgress({ profile }) {
             Peer Vouches
           </h2>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            Three local members must confirm they know you before peer verification activates.
+            One vouch unlocks full app access. Three vouches turn you into a Peer Verifier so you
+            can verify up to five other members in your city.
           </p>
         </div>
 
         <div className="flex flex-col items-start gap-2 sm:items-end">
-          {verified ? (
+          {peerVerified ? (
             <span
               data-testid="peer-verified-status"
               className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-400"
@@ -118,11 +168,11 @@ function PeerVouchProgress({ profile }) {
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 py-1.5 text-xs font-bold text-muted-foreground">
               <Users className="h-4 w-4" />
-              In progress
+              Not yet verified
             </span>
           )}
 
-          {verified ? (
+          {isVerifier ? (
             <p data-testid="vouch-credits" className="text-sm font-semibold text-muted-foreground">
               {credits} / 5 Credits Left to Verify Others
             </p>
@@ -130,17 +180,40 @@ function PeerVouchProgress({ profile }) {
         </div>
       </div>
 
-      <div className="mt-5 flex items-center gap-2">
-        {[1, 2, 3].map(step => (
-          <ProgressSegment key={step} filled={filled >= step} />
-        ))}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <MilestoneCard
+          testId="milestone-access"
+          title="1 vouch · Full app access"
+          description="A single local verifier confirms you in person or over a live video call, and discovery, search, and messaging unlock immediately."
+          unlocked={peerVerified}
+          filled={Math.min(count, 1)}
+          total={1}
+          footer={
+            peerVerified
+              ? 'Your Peer Verified badge is active.'
+              : 'Show your QR code to any local verifier.'
+          }
+        />
+        <MilestoneCard
+          testId="milestone-verifier"
+          title="3 vouches · Verify up to 5 others"
+          description="Once three verifiers confirm you, you can vouch for up to five other members in your city."
+          unlocked={isVerifier}
+          filled={Math.min(count, PEER_VOUCH_TARGET)}
+          total={PEER_VOUCH_TARGET}
+          footer={
+            isVerifier
+              ? `${credits} of 5 credits remaining.`
+              : `${Math.max(0, PEER_VOUCH_TARGET - count)} more vouch(es) to unlock the scanner.`
+          }
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <VerificationBadges user={profile} />
-        {!verified ? (
+        {!peerVerified ? (
           <span className="text-xs font-semibold text-muted-foreground">
-            Your ID verification is separate and remains available below.
+            Government-ID verification remains available as a fallback below.
           </span>
         ) : null}
       </div>
@@ -162,9 +235,10 @@ function NearestVerifiers({ query }) {
             Nearest peer verifiers in {verifiers[0]?.city || 'your city'}
           </h2>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            Contact one of the nearest verified members in your city below to meet in person (highly
-            recommended) or verify over an external video call via WhatsApp or Zoom (MarryLocal does
-            not include built-in video chat). Show them your rotating QR code once connected!
+            Contact one of the nearest verifiers below to meet in person (recommended) or verify
+            live over WhatsApp or Zoom (MarryLocal does not include built-in video chat). You do not
+            need to know them beforehand — they will check your government ID and scan your rotating
+            QR code once connected.
           </p>
         </div>
       </div>
@@ -226,14 +300,189 @@ function NearestVerifiers({ query }) {
   );
 }
 
+function formatVerificationDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function SeedVerifierBanner({ profile, onUpdated }) {
+  const queryClient = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const refreshProfile = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    onUpdated?.();
+  };
+
+  const optInMutation = useMutation({
+    mutationFn: async () => apiClient.post('/api/v1/vouch/seed-opt-in'),
+    onSuccess: async () => {
+      toast.success(
+        'You joined the seed verifier list. Email your government ID to verify@marrylocal.in.',
+      );
+      await refreshProfile();
+    },
+    onError: error => {
+      toast.error(describeApiError(error, 'Could not opt in as a seed verifier.'));
+    },
+  });
+
+  const optOutMutation = useMutation({
+    mutationFn: async () => apiClient.post('/api/v1/vouch/seed-opt-out'),
+    onSuccess: async () => {
+      setConfirmOpen(false);
+      toast.success('You will not be invited as a seed verifier.');
+      await refreshProfile();
+    },
+    onError: error => {
+      setConfirmOpen(false);
+      toast.error(describeApiError(error, 'Could not opt out right now.'));
+    },
+  });
+
+  return (
+    <>
+      <section
+        data-testid="seed-verifier-banner"
+        className="rounded-3xl border border-primary/30 bg-primary/5 p-6 shadow-sm"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Mail className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              Seed verifier invitation
+            </p>
+            <h2 className="mt-1 text-xl font-black tracking-tight text-foreground">
+              Become one of the first 10 seed verifiers in {profile?.city || 'your city'}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Seed verifiers are the trusted members who start the peer-vouching chain. You do not
+              need to know anyone in advance: meet a local member in person (or verify live over
+              WhatsApp/Zoom), check their government ID, and scan their rotating QR code. When a
+              city crosses 50 opposite-gender members, verification becomes required, so seed
+              verifiers keep the community moving.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              To join, email a photo of your government ID to{' '}
+              <a className="font-bold text-primary underline" href="mailto:verify@marrylocal.in">
+                verify@marrylocal.in
+              </a>
+              . Our team reviews it and activates your verifier credits.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                data-testid="seed-opt-in"
+                onClick={() => optInMutation.mutate()}
+                disabled={optInMutation.isPending || optOutMutation.isPending}
+                className="rounded-xl font-bold"
+              >
+                {optInMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                )}
+                Opt In as Seed Verifier
+              </Button>
+              <Button
+                type="button"
+                data-testid="seed-opt-out"
+                variant="outline"
+                onClick={() => setConfirmOpen(true)}
+                disabled={optInMutation.isPending || optOutMutation.isPending}
+                className="rounded-xl font-bold"
+              >
+                No Thanks, Opt Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Opt out of seed verification?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will stop seeing this invitation and another member in your city will be invited
+              instead. You can still get verified later with a normal peer vouch or a government ID.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep invitation</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="seed-opt-out-confirm"
+              disabled={optOutMutation.isPending}
+              onClick={event => {
+                event.preventDefault();
+                optOutMutation.mutate();
+              }}
+            >
+              {optOutMutation.isPending ? 'Opting out…' : 'Yes, opt me out'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function VerificationActiveCard({ profile }) {
+  const verifiedOn = formatVerificationDate(profile?.verified_at);
+  const renewal = formatVerificationDate(profile?.verification_expires_at);
+
+  return (
+    <section
+      data-testid="verification-active-card"
+      className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center shadow-sm"
+    >
+      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+        <ShieldCheck className="h-7 w-7" />
+      </span>
+      <h2 className="mt-4 text-2xl font-black tracking-tight text-foreground">
+        Verification Active
+      </h2>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+        Your identity is verified. Discovery, search, and messaging stay available, and you do not
+        need to verify again until your renewal date.
+      </p>
+
+      <div className="mt-5 flex flex-col items-center justify-center gap-2 text-sm font-semibold text-muted-foreground sm:flex-row sm:gap-6">
+        {verifiedOn ? (
+          <span className="inline-flex items-center gap-2">
+            <CalendarClock className="h-4 w-4" />
+            Verified on {verifiedOn}
+          </span>
+        ) : null}
+        {renewal ? <span>Renews on {renewal}</span> : null}
+      </div>
+    </section>
+  );
+}
+
 function PeerVerificationPanel({ mode }) {
   const queryClient = useQueryClient();
   const profileQuery = useProfileQuery(mode === 'peer');
   const profile = profileQuery.data || {};
-  const [activePanel, setActivePanel] = useState('qr');
-  const peerVerified = Boolean(profile.peer_verified);
+  const [searchParams] = useSearchParams();
+  const [activePanel, setActivePanel] = useState(
+    searchParams.get('tab') === 'scanner' ? 'scan' : 'qr',
+  );
+  const isPeerVerifier = Boolean(profile.is_peer_verifier);
   const credits = Number(profile.vouch_credits_remaining ?? 0);
-  const canScan = peerVerified && credits > 0;
+  const canScan = isPeerVerifier && credits > 0;
+  const shownPanel = canScan ? activePanel : 'qr';
+  const seedInvited = profile.seed_verifier_status === 'invited';
   const refetchProfile = profileQuery.refetch;
 
   const nearestQuery = useQuery({
@@ -258,17 +507,21 @@ function PeerVerificationPanel({ mode }) {
 
   return (
     <div className="space-y-5">
+      {seedInvited ? <SeedVerifierBanner profile={profile} onUpdated={refetchProfile} /> : null}
+
       <PeerVouchProgress profile={profile} />
 
       <section className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-black tracking-tight text-foreground">
-              Get verified by your community
+              Get verified by a local member
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Show a rotating code to a verified member. Once three members confirm you, you can
-              start vouching for others.
+              You do not need to know the verifier beforehand. Meet a local verified member in
+              person, or do a live video call over WhatsApp or Zoom, show your government ID, and
+              let them scan your rotating code. One vouch unlocks full access; three make you a Peer
+              Verifier for up to five others.
             </p>
           </div>
           <VerificationBadges user={profile} />
@@ -281,7 +534,7 @@ function PeerVerificationPanel({ mode }) {
             onClick={() => setActivePanel('qr')}
             className={cn(
               'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-colors',
-              activePanel === 'qr'
+              shownPanel === 'qr'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground',
             )}
@@ -297,11 +550,11 @@ function PeerVerificationPanel({ mode }) {
             title={
               canScan
                 ? 'Scan another member’s rotating QR code.'
-                : 'You need peer verification and at least one vouch credit to scan others.'
+                : 'Three vouches unlock the scanner plus at least one remaining credit.'
             }
             className={cn(
               'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-              activePanel === 'scan' && canScan
+              shownPanel === 'scan'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground',
             )}
@@ -312,7 +565,7 @@ function PeerVerificationPanel({ mode }) {
         </div>
 
         <div className="mt-6 rounded-2xl border border-border/60 bg-muted/10 p-4 sm:p-6">
-          {activePanel === 'qr' ? (
+          {shownPanel === 'qr' ? (
             <RequestVouchToken />
           ) : (
             <VerifyPeerScanner enabled={canScan} onVouchSuccess={handleVouchSuccess} />
@@ -324,10 +577,10 @@ function PeerVerificationPanel({ mode }) {
         data-testid="peer-vouch-guidance"
         className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm font-semibold leading-relaxed text-amber-900 dark:text-amber-200"
       >
-        🤝 How to get verified: Contact one of the nearest verified members in your city below to
-        meet in person (highly recommended) or verify over an external video call via WhatsApp or
-        Zoom (MarryLocal does not include built-in video chat). Show them your rotating QR code once
-        connected!
+        🤝 How to get verified: pick one of the nearest verifiers in your city below. Contact them
+        to meet in person (recommended) or verify live over WhatsApp or Zoom — MarryLocal does not
+        include built-in video chat. They will ask to see your government ID, then scan your
+        rotating QR code. One vouch unlocks the app; three vouches let you verify up to five others.
       </div>
 
       <NearestVerifiers query={nearestQuery} />
@@ -651,6 +904,23 @@ function DocumentVerificationPanel() {
 
 export function Verification() {
   const [mode, setMode] = useState('peer');
+  const profileQuery = useProfileQuery();
+  const profile = profileQuery.data || {};
+  const idVerified = Boolean(
+    profile.id_verified ??
+      profile.aadhaar_verified ??
+      profile.aadhar_verified ??
+      profile.passport_verified ??
+      profile.license_verified,
+  );
+  const verified = Boolean(profile.peer_verified) || idVerified;
+  const activeVerifier =
+    Boolean(profile.is_peer_verifier) && Number(profile.vouch_credits_remaining ?? 0) > 0;
+  const needsMoreVouches =
+    Boolean(profile.peer_verified) &&
+    !profile.is_peer_verifier &&
+    Number(profile.peer_vouches_received ?? 0) < 3;
+  const locked = verified && !activeVerifier && !needsMoreVouches;
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-8">
@@ -663,41 +933,52 @@ export function Verification() {
             Identity verification
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            The fastest path is peer-to-peer verification with three local members. A
-            government-document review remains available as a fallback.
+            {locked
+              ? 'Your verification is active. Nothing else is required right now.'
+              : 'One local vouch unlocks full access. Three vouches make you a Peer Verifier. A government-document review remains available as a fallback.'}
           </p>
         </div>
 
-        <div className="grid gap-2 rounded-2xl border border-border/60 bg-muted/20 p-1 sm:grid-cols-2">
-          <button
-            type="button"
-            data-testid="verify-mode-peer"
-            onClick={() => setMode('peer')}
-            className={cn(
-              'rounded-xl px-4 py-3 text-sm font-black transition-colors',
-              mode === 'peer'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            Peer-to-Peer Verification (Recommended)
-          </button>
-          <button
-            type="button"
-            data-testid="verify-mode-document"
-            onClick={() => setMode('document')}
-            className={cn(
-              'rounded-xl px-4 py-3 text-sm font-black transition-colors',
-              mode === 'document'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-            )}
-          >
-            Government Document Upload
-          </button>
-        </div>
+        {locked ? (
+          <VerificationActiveCard profile={profile} />
+        ) : (
+          <>
+            <div className="grid gap-2 rounded-2xl border border-border/60 bg-muted/20 p-1 sm:grid-cols-2">
+              <button
+                type="button"
+                data-testid="verify-mode-peer"
+                onClick={() => setMode('peer')}
+                className={cn(
+                  'rounded-xl px-4 py-3 text-sm font-black transition-colors',
+                  mode === 'peer'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                Peer-to-Peer Verification (Recommended)
+              </button>
+              <button
+                type="button"
+                data-testid="verify-mode-document"
+                onClick={() => setMode('document')}
+                className={cn(
+                  'rounded-xl px-4 py-3 text-sm font-black transition-colors',
+                  mode === 'document'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                Government Document Upload
+              </button>
+            </div>
 
-        {mode === 'peer' ? <PeerVerificationPanel mode={mode} /> : <DocumentVerificationPanel />}
+            {mode === 'peer' ? (
+              <PeerVerificationPanel mode={mode} />
+            ) : (
+              <DocumentVerificationPanel />
+            )}
+          </>
+        )}
       </div>
     </div>
   );

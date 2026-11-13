@@ -135,6 +135,7 @@ export default function Admin() {
   const [searchText, setSearchText] = useState('');
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [validityDays, setValidityDays] = useState('');
 
   const lookupQuery = useQuery({
     queryKey: adminKeys.userLookup(),
@@ -169,7 +170,7 @@ export default function Admin() {
     mutationFn: settings => updateAdminSettings(settings),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.all });
-      toast.success('Verification enforcement updated');
+      toast.success('Platform settings updated');
     },
     onError: error => {
       toast.error(describeApiError(error, 'Could not update verification enforcement'));
@@ -372,6 +373,52 @@ export default function Admin() {
                 }
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 border-border/60 bg-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BadgeCheck className="h-5 w-5 text-primary" />
+            Verification Validity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <Label htmlFor="verification_validity_days">Validity window (days)</Label>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Defaults to 730 days (2 years). The daily expiry sweep resets peer and government-ID
+                verification older than this window so members must re-verify.
+              </p>
+              <Input
+                id="verification_validity_days"
+                data-testid="admin-verification-validity"
+                type="number"
+                min="1"
+                max="3650"
+                className="mt-2 h-11 max-w-xs rounded-xl"
+                value={validityDays || settingsQuery.data?.verification_validity_days || ''}
+                onChange={event => setValidityDays(event.target.value)}
+              />
+            </div>
+            <Button
+              type="button"
+              disabled={settingsMutation.isPending || !isOnline}
+              onClick={() => {
+                const days = Number(validityDays || settingsQuery.data?.verification_validity_days);
+
+                if (!Number.isInteger(days) || days < 1 || days > 3650) {
+                  toast.error('Validity must be an integer between 1 and 3650 days.');
+                  return;
+                }
+
+                settingsMutation.mutate({ verification_validity_days: days });
+              }}
+            >
+              {settingsMutation.isPending ? 'Saving…' : 'Save validity'}
+            </Button>
           </div>
         </CardContent>
       </Card>

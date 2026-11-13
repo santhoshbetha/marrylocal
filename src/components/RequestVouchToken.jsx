@@ -68,9 +68,14 @@ export function RequestVouchToken() {
     <div className="flex w-full flex-col items-center text-center">
       <div className="flex items-center gap-2 text-sm font-bold text-foreground">
         <ShieldCheck className="h-4 w-4 text-emerald-600" />
-        Show this code to a verified member
+        Show this code to a local verifier
       </div>
       <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+        You do not need to know the verifier beforehand. Meet them in person, or verify live over
+        WhatsApp or Zoom, show your government ID, and let them scan this code. One vouch unlocks
+        full app access; three vouches let you verify up to five other members.
+      </p>
+      <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
         The code rotates every 60 seconds and can be scanned only once. Keep it visible only while
         the verifier is with you.
       </p>
