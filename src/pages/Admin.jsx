@@ -46,6 +46,7 @@ const BOOLEAN_FIELDS = [
   { key: 'aadhaar_verified', label: 'Aadhaar verified' },
   { key: 'passport_verified', label: 'Passport verified' },
   { key: 'license_verified', label: 'License verified' },
+  { key: 'peer_verified', label: 'Peer verified' },
   { key: 'terms_accepted', label: 'Terms accepted' },
   { key: 'one_time_fees_paid', label: 'One-time fees paid' },
   { key: 'one_time_fees_required', label: 'One-time fees required' },
@@ -63,6 +64,9 @@ const EMPTY_FORM = {
   aadhaar_verified: false,
   passport_verified: false,
   license_verified: false,
+  peer_verified: false,
+  peer_vouches_received: 0,
+  vouch_credits_remaining: 0,
   terms_accepted: false,
   one_time_fees_paid: false,
   one_time_fees_required: false,
@@ -83,6 +87,9 @@ function formFromUser(user) {
     aadhaar_verified: Boolean(user.aadhaar_verified),
     passport_verified: Boolean(user.passport_verified),
     license_verified: Boolean(user.license_verified),
+    peer_verified: Boolean(user.peer_verified),
+    peer_vouches_received: user.peer_vouches_received ?? 0,
+    vouch_credits_remaining: user.vouch_credits_remaining ?? 0,
     terms_accepted: Boolean(user.terms_accepted),
     one_time_fees_paid: Boolean(user.one_time_fees_paid),
     one_time_fees_required: Boolean(user.one_time_fees_required),
@@ -112,6 +119,8 @@ function buildUpdates(form) {
     age: optionalInteger(form.age),
     max_search_distance: optionalInteger(form.max_search_distance),
     accepted_one_time_fees_amount: optionalInteger(form.accepted_one_time_fees_amount),
+    peer_vouches_received: optionalInteger(form.peer_vouches_received),
+    vouch_credits_remaining: optionalInteger(form.vouch_credits_remaining),
     is_beta_tester: form.is_beta_tester,
     user_state: form.user_state,
     ...Object.fromEntries(BOOLEAN_FIELDS.map(field => [field.key, Boolean(form[field.key])])),
@@ -654,6 +663,32 @@ export default function Admin() {
 
             <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
               <p className="mb-3 text-sm font-semibold text-foreground">Verification & billing</p>
+              <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="peer_vouches_received">Peer vouches received</Label>
+                  <Input
+                    id="peer_vouches_received"
+                    type="number"
+                    min="0"
+                    value={formData.peer_vouches_received}
+                    onChange={event =>
+                      handleInputChange('peer_vouches_received', event.target.value)
+                    }
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="vouch_credits_remaining">Vouch credits remaining</Label>
+                  <Input
+                    id="vouch_credits_remaining"
+                    type="number"
+                    min="0"
+                    value={formData.vouch_credits_remaining}
+                    onChange={event =>
+                      handleInputChange('vouch_credits_remaining', event.target.value)
+                    }
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {BOOLEAN_FIELDS.map(field => (
                   <label
@@ -694,6 +729,42 @@ export default function Admin() {
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={handleSave} disabled={isSaving || !isOnline}>
                 {isSaving ? 'Saving…' : 'Save changes'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving || !isOnline || !user}
+                onClick={() =>
+                  user &&
+                  updateMutation.mutate({
+                    id: user.id,
+                    updates: {
+                      peer_verified: true,
+                      peer_vouches_received: 3,
+                      vouch_credits_remaining: 5,
+                    },
+                  })
+                }
+              >
+                Grant peer verifier
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving || !isOnline || !user}
+                onClick={() =>
+                  user &&
+                  updateMutation.mutate({
+                    id: user.id,
+                    updates: {
+                      peer_verified: false,
+                      peer_vouches_received: 0,
+                      vouch_credits_remaining: 0,
+                    },
+                  })
+                }
+              >
+                Reset peer status
               </Button>
               <p className="text-xs text-muted-foreground">
                 Email and phone are display-only. Update those from the user's own profile flow.

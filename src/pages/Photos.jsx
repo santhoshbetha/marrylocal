@@ -106,7 +106,9 @@ function Photos() {
       const form = buildAvatarFormData(fileBlob);
       form.append('slot_index', String(slotIndex));
 
-      const response = await api.post('/api/v1/profiles/me/avatar', form);
+      const response = await api.post('/api/v1/profiles/me/avatar', form, {
+        timeout: 60_000,
+      });
 
       return response.data?.data ?? null;
     },

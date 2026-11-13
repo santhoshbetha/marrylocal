@@ -238,6 +238,7 @@ test('manual KYC submission, admin 1-click approval, and duplicate document conf
 
   await page.goto('/verify');
   await expect(page.getByRole('heading', { name: 'Identity verification' })).toBeVisible();
+  await page.getByTestId('verify-mode-document').click();
 
   await page.locator('#document_type').click();
   await page.getByRole('option', { name: 'Indian Passport' }).click();
@@ -245,7 +246,10 @@ test('manual KYC submission, admin 1-click approval, and duplicate document conf
   await page.getByTestId('verification-file-input').setInputFiles({
     name: 'passport.png',
     mimeType: 'image/png',
-    buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAWSURBVChTY1CoyPuPDzOgC6Dj4aEAAFeGgUEU0rJwAAAAAElFTkSuQmCC',
+      'base64',
+    ),
   });
   await page.getByRole('button', { name: 'Submit for verification' }).click();
 

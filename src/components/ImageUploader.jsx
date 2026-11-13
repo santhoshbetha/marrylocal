@@ -17,7 +17,8 @@ import { validateProfileImage } from '@/lib/imageValidation';
 
 const DEFAULT_ACCEPTED_TYPES = ['image/jpeg', 'image/png'];
 const DEFAULT_MAX_SIZE = 5 * 1024 * 1024;
-const JPEG_QUALITY = 0.92;
+const JPEG_QUALITY = 0.85;
+const MAX_OUTPUT_DIMENSION = 1600;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -215,9 +216,17 @@ export function ImageUploader({
     const sourceWidth = Math.max(1, Math.min(area.width, naturalWidth - sourceX));
     const sourceHeight = Math.max(1, Math.min(area.height, naturalHeight - sourceY));
 
+    const scale = Math.min(
+      1,
+      MAX_OUTPUT_DIMENSION / Math.max(sourceWidth, sourceHeight),
+    );
+
+    const outputWidth = Math.max(1, Math.round(sourceWidth * scale));
+    const outputHeight = Math.max(1, Math.round(sourceHeight * scale));
+
     const canvas = document.createElement('canvas');
-    canvas.width = Math.round(sourceWidth);
-    canvas.height = Math.round(sourceHeight);
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
 
     const context = canvas.getContext('2d');
 
@@ -243,11 +252,17 @@ export function ImageUploader({
     return new Promise((resolve, reject) => {
       canvas.toBlob(
         blob => {
-          if (blob) {
-            resolve(blob);
-          } else {
+          if (!blob) {
             reject(new Error('The cropped image could not be generated. Try another photo.'));
+            return;
           }
+
+          if (blob.size > 5 * 1024 * 1024) {
+            reject(new Error('This crop is still too large. Zoom in or choose a smaller image.'));
+            return;
+          }
+
+          resolve(blob);
         },
         'image/jpeg',
         JPEG_QUALITY,

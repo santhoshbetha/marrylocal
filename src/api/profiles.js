@@ -56,7 +56,7 @@ export const uploadAvatar = async file => {
   form.append('avatar', file);
 
   const response = await api.post('/api/v1/profiles/me/avatar', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60_000,
   });
 
   return response.data;

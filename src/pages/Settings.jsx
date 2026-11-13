@@ -62,7 +62,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { apiClient } from '@/api/client';
+import { apiClient, API_BASE_URL } from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
 import { readDarkVariant, setDarkVariantPreference } from '@/lib/theme';
 import { cities } from '@/lib/cities';
@@ -819,7 +819,7 @@ function Settings() {
     queryKey: ['billing', 'invoices'],
     queryFn: async () => {
       const token = window.localStorage.getItem('marrylocal.auth.token');
-      const response = await window.fetch('/api/v1/billing/invoices', {
+      const response = await window.fetch(`${API_BASE_URL}/api/v1/billing/invoices`, {
         headers: token ? { authorization: `Bearer ${token}` } : {},
         cache: 'no-store',
       });

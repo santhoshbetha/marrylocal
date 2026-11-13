@@ -36,6 +36,9 @@ export function normalizeAdminUser(user) {
     aadhaar_verified: Boolean(user.aadhaar_verified ?? user.aadhar_verified ?? user.aadharverified),
     passport_verified: Boolean(user.passport_verified ?? user.passportverified),
     license_verified: Boolean(user.license_verified ?? user.licenseverified),
+    peer_verified: Boolean(user.peer_verified),
+    peer_vouches_received: user.peer_vouches_received ?? 0,
+    vouch_credits_remaining: user.vouch_credits_remaining ?? 0,
     terms_accepted: Boolean(user.terms_accepted ?? user.termsaccepted),
     one_time_fees_paid: Boolean(
       user.one_time_fees_paid ?? user.onetime_fees_paid ?? user.onetimefeespaid,

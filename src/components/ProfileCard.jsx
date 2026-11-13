@@ -3,6 +3,7 @@ import { MapPin, Heart, Bookmark, X, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { describeApiError } from '@/api/client';
 import { PresenceBadge } from '@/components/PresenceBadge';
+import { VerificationBadges } from '@/components/VerificationBadges';
 import { useProfileInteraction } from '@/hooks/useDiscovery';
 
 function distanceLabel(profile) {
@@ -112,6 +113,7 @@ export function ProfileCard({ profile, onOpen, onRemove, removePending = false }
               <p className="mt-0.5 truncate text-sm text-muted-foreground">
                 {profile?.user_handle ? `@${profile.user_handle}` : 'Verified local member'}
               </p>
+              <VerificationBadges user={profile} className="mt-2" />
             </div>
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               <Sparkles className="h-3 w-3" />

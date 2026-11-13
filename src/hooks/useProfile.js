@@ -41,7 +41,9 @@ export function useAvatarUpload() {
       // header without a boundary makes Plug.Parsers reject the body.
       const form = buildAvatarFormData(payload);
 
-      const response = await api.post('/api/v1/profiles/me/avatar', form);
+      const response = await api.post('/api/v1/profiles/me/avatar', form, {
+        timeout: 60_000,
+      });
 
       return response.data?.data;
     },

@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PresenceBadge } from '@/components/PresenceBadge';
 import { ProfileSkeleton } from '@/components/ProfileSkeleton';
+import { VerificationBadges } from '@/components/VerificationBadges';
 import { apiClient, describeApiError } from '@/api/client';
 import { useModerationAction, useProfileInteraction } from '@/hooks/useDiscovery';
 import { useAuthStore } from '@/store/authStore';
@@ -276,7 +277,9 @@ function UserProfile() {
     );
   }
 
-  const verified = Boolean(profile?.verified);
+  const idVerified = Boolean(profile?.id_verified ?? profile?.verified);
+  const peerVerified = Boolean(profile?.peer_verified);
+  const anyVerified = idVerified || peerVerified;
   const publicSocial = profile?.social || {};
   const lastLoginAt = profile?.last_login_at || profile?.last_seen_at;
   const isOnline = Boolean(profile?.is_online);
@@ -463,11 +466,8 @@ function UserProfile() {
                           ) : null}
                         </h1>
 
-                        {verified ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            Verified
-                          </span>
+                        {anyVerified ? (
+                          <VerificationBadges user={profile} />
                         ) : (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-accent px-3 py-1 text-xs font-bold text-accent-foreground">
                             <AlertTriangle className="h-3.5 w-3.5" />
@@ -697,9 +697,19 @@ function UserProfile() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <InfoTile
                     icon={<ShieldCheck className="h-5 w-5" />}
-                    label="Identity"
-                    value={verified ? 'Verified member' : 'Verification pending'}
-                    tone={verified ? 'emerald' : 'amber'}
+                    label="Peer verification"
+                    value={
+                      peerVerified
+                        ? 'Peer verified'
+                        : `${profile?.peer_vouches_received || 0} / 3 peer vouches`
+                    }
+                    tone={peerVerified ? 'emerald' : 'amber'}
+                  />
+                  <InfoTile
+                    icon={<CheckCircle className="h-5 w-5" />}
+                    label="Government ID"
+                    value={idVerified ? 'ID verified' : 'Not submitted'}
+                    tone={idVerified ? 'blue' : 'amber'}
                   />
                   <InfoTile
                     icon={<Clock className="h-5 w-5" />}
