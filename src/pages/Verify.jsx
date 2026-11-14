@@ -588,6 +588,95 @@ function PeerVerificationPanel({ mode }) {
   );
 }
 
+const DOCUMENT_LABELS = {
+  passport: 'Passport',
+  license: 'Driving License',
+  aadhaar: 'Aadhaar',
+};
+
+function historyDecision(entry) {
+  if (entry?.decision) return entry.decision;
+  if (entry?.status === 'verified') return 'approved';
+  if (entry?.status === 'rejected') return 'rejected';
+  if (entry?.status === 'expired') return 'expired';
+  return 'pending';
+}
+
+function VerificationHistoryList({ entries }) {
+  if (!entries?.length) return null;
+
+  return (
+    <section
+      data-testid="verification-history"
+      className="mt-6 rounded-2xl border border-border/60 bg-muted/20 p-4 sm:p-5"
+    >
+      <h3 className="text-sm font-black tracking-tight text-foreground">
+        Previous Verification Submissions
+      </h3>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Every submission and review decision is retained for your records.
+      </p>
+
+      <div className="mt-3 space-y-2">
+        {entries.map(entry => {
+          const decision = historyDecision(entry);
+          const badge =
+            decision === 'approved'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+              : decision === 'rejected'
+                ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                : decision === 'expired'
+                  ? 'border-border/60 bg-muted text-muted-foreground'
+                  : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+          const label =
+            decision === 'approved'
+              ? 'Approved'
+              : decision === 'rejected'
+                ? 'Rejected'
+                : decision === 'expired'
+                  ? 'Expired'
+                  : 'Under review';
+
+          return (
+            <article
+              key={entry.id}
+              data-testid={`verification-history-${entry.id}`}
+              className="rounded-xl border border-border/60 bg-card p-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-foreground">
+                  {DOCUMENT_LABELS[entry.document_type] || entry.document_type}
+                  <span className="ml-2 font-semibold text-muted-foreground">
+                    {formatVerificationDate(entry.submitted_at || entry.inserted_at) ||
+                      'Unknown date'}
+                  </span>
+                </p>
+                <span
+                  className={cn('rounded-full border px-2.5 py-1 text-[11px] font-black', badge)}
+                >
+                  {label}
+                </span>
+              </div>
+
+              {entry.reviewed_at ? (
+                <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                  Reviewed {formatVerificationDate(entry.reviewed_at)}
+                </p>
+              ) : null}
+
+              {entry.rejection_reason ? (
+                <p className="mt-2 text-sm font-semibold text-destructive">
+                  {entry.rejection_reason}
+                </p>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function DocumentVerificationPanel() {
   const queryClient = useQueryClient();
   const inputRef = useRef(null);
@@ -622,6 +711,7 @@ function DocumentVerificationPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['verifications', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['verifications', 'history'] });
       setFile(null);
       setFileError('');
       formik.resetForm();
@@ -906,6 +996,16 @@ export function Verification() {
   const [mode, setMode] = useState('peer');
   const profileQuery = useProfileQuery();
   const profile = profileQuery.data || {};
+
+  const { data: verificationHistory = [] } = useQuery({
+    queryKey: ['verifications', 'history'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/verifications/history');
+      return data?.data?.verifications ?? [];
+    },
+    staleTime: 15_000,
+  });
+
   const idVerified = Boolean(
     profile.id_verified ??
       profile.aadhaar_verified ??
@@ -979,6 +1079,8 @@ export function Verification() {
             )}
           </>
         )}
+
+        <VerificationHistoryList entries={verificationHistory} />
       </div>
     </div>
   );

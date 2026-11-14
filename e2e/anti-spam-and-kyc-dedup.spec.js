@@ -209,6 +209,31 @@ test('manual KYC submission, admin 1-click approval, and duplicate document conf
     });
   });
 
+  await page.route('**/api/v1/verifications/history', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'success',
+        data: {
+          verifications: submitted
+            ? [
+                {
+                  id: pendingVerification.id,
+                  document_type: 'passport',
+                  status: 'pending_admin_review',
+                  decision: 'pending',
+                  submitted_at: pendingVerification.inserted_at,
+                  reviewed_at: null,
+                  rejection_reason: null,
+                },
+              ]
+            : [],
+        },
+      }),
+    });
+  });
+
   await page.route('**/api/v1/vouch/nearest-verifiers', async route => {
     await route.fulfill({
       status: 200,

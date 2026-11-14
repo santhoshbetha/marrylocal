@@ -215,6 +215,14 @@ test.describe.serial('verification enforcement gate', () => {
   });
 
   test('Test 2: global switch ON re-evaluates login gating and locks search', async ({ page }) => {
+    await page.route('**/api/v1/verifications/history', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'success', data: { verifications: [] } }),
+      });
+    });
+
     await setGateThroughAdminUi(page, true);
     await logout(page);
 

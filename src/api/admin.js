@@ -13,6 +13,8 @@ export const adminKeys = {
   users: filters => ['admin', 'users', filters ?? {}],
   userLookup: () => ['admin', 'user-lookup'],
   verifications: () => ['admin', 'verifications'],
+  verificationHistory: userId => ['admin', 'verification-history', userId],
+  reports: status => ['admin', 'reports', status ?? 'pending'],
   settings: () => ['admin', 'settings'],
 };
 
@@ -151,4 +153,40 @@ export async function rejectAdminVerification(id, reason, { signal } = {}) {
 export async function updateAdminSettings(settings, { signal } = {}) {
   const { data } = await apiClient.patch('/api/v1/admin/settings', settings, { signal });
   return data?.data?.settings ?? {};
+}
+
+export async function fetchAdminVerificationHistory(userId, { signal } = {}) {
+  const { data } = await apiClient.get(
+    `/api/v1/admin/users/${encodeURIComponent(userId)}/verifications`,
+    { signal },
+  );
+  return data?.data?.verifications ?? [];
+}
+
+export async function fetchAdminReports(status = 'pending', { signal } = {}) {
+  const { data } = await apiClient.get('/api/v1/admin/reports', {
+    params: { status },
+    signal,
+  });
+  return data?.data?.reports ?? [];
+}
+
+export async function fetchAdminReport(id, { signal } = {}) {
+  const { data } = await apiClient.get(`/api/v1/admin/reports/${encodeURIComponent(id)}`, {
+    signal,
+  });
+  return data?.data?.report ?? null;
+}
+
+export async function resolveAdminReport(
+  id,
+  { status, suspend_user = false, admin_notes = null },
+  { signal } = {},
+) {
+  const { data } = await apiClient.patch(
+    `/api/v1/admin/reports/${encodeURIComponent(id)}`,
+    { status, suspend_user, admin_notes },
+    { signal },
+  );
+  return data?.data?.report ?? null;
 }

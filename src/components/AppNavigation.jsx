@@ -5,6 +5,7 @@ import {
   BellRing,
   Bookmark,
   CreditCard,
+  Flag,
   Images,
   Loader2,
   Mail,
@@ -116,6 +117,7 @@ export function AppNavigation({ children }) {
               icon: BellRing,
               end: true,
             },
+            { to: '/admin/reports', label: 'User Reports', icon: Flag, end: true },
           ],
         },
       ];

@@ -107,6 +107,14 @@ test('verification page updates from a channel push and never polls the profile'
     });
   });
 
+  await page.route('**/api/v1/verifications/history', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'success', data: { verifications: [] } }),
+    });
+  });
+
   await page.route('**/api/v1/vouch/nearest-verifiers', async route => {
     await route.fulfill({
       status: 200,

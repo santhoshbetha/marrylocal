@@ -19,7 +19,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { describeApiError } from '@/api/client';
-import { adminKeys, fetchAdminUsers } from '@/api/admin';
+import { adminKeys, fetchAdminUsers, fetchAdminVerificationHistory } from '@/api/admin';
 
 function StatusBadge({ active, onLabel = 'Verified', offLabel = 'Not verified' }) {
   return (
@@ -68,6 +68,14 @@ export default function UserProfiles() {
 
   const users = usersQuery.data ?? [];
   const selectedUser = users.find(user => user.id === selectedId) ?? null;
+
+  const verificationHistoryQuery = useQuery({
+    queryKey: adminKeys.verificationHistory(selectedUser?.id),
+    queryFn: ({ signal }) => fetchAdminVerificationHistory(selectedUser.id, { signal }),
+    enabled: Boolean(selectedUser?.id),
+  });
+
+  const verificationHistory = verificationHistoryQuery.data ?? [];
 
   const handleSearch = async () => {
     const query = searchText.trim();
@@ -394,6 +402,77 @@ export default function UserProfiles() {
                       <StatusBadge active={selectedUser.license_verified} />
                     </div>
                   </div>
+                </section>
+
+                <section data-testid="admin-verification-history">
+                  <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+                    <Shield className="h-5 w-5 text-primary" />
+                    Verification history
+                  </h3>
+
+                  {verificationHistoryQuery.isLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading submissions…</p>
+                  ) : verificationHistory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No submissions yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {verificationHistory.map(entry => {
+                        const decision =
+                          entry.decision ||
+                          (entry.status === 'verified'
+                            ? 'approved'
+                            : entry.status === 'rejected'
+                              ? 'rejected'
+                              : entry.status === 'expired'
+                                ? 'expired'
+                                : 'pending');
+                        const label =
+                          decision === 'approved'
+                            ? 'Approved'
+                            : decision === 'rejected'
+                              ? 'Rejected'
+                              : decision === 'expired'
+                                ? 'Expired'
+                                : 'Under review';
+
+                        return (
+                          <div
+                            key={entry.id}
+                            className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-foreground capitalize">
+                                {entry.document_type} ·{' '}
+                                {formatDate(entry.submitted_at || entry.inserted_at)}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  decision === 'approved'
+                                    ? 'border-primary/30 bg-primary/10 text-primary'
+                                    : decision === 'rejected'
+                                      ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                                      : 'border-border bg-muted text-muted-foreground'
+                                }
+                              >
+                                {label}
+                              </Badge>
+                            </div>
+                            {entry.reviewed_at ? (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Reviewed {formatDate(entry.reviewed_at)}
+                              </p>
+                            ) : null}
+                            {entry.rejection_reason ? (
+                              <p className="mt-1 text-sm text-destructive">
+                                {entry.rejection_reason}
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </section>
 
                 <Separator className="bg-border/60" />

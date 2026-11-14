@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, CheckCheck, Heart, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
+import { BadgeCheck, Bell, CheckCheck, Heart, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { toast } from 'sonner';
@@ -35,6 +35,12 @@ const TYPE_STYLES = {
     iconClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
   },
+  verification_update: {
+    label: 'Verification',
+    icon: BadgeCheck,
+    iconClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  },
 };
 
 function styleFor(type) {
@@ -61,6 +67,8 @@ function notificationDestination(notification) {
       return profilePath(metadata.sender_shortid ?? metadata.sender_id ?? notification.actor_id);
     case 'mutual_match':
       return profilePath(metadata.match_shortid ?? metadata.match_id ?? notification.actor_id);
+    case 'verification_update':
+      return '/verify';
     default:
       return null;
   }

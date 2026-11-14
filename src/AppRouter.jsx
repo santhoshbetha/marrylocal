@@ -112,6 +112,7 @@ import UserProfiles from '@/pages/UserProfiles';
 import AdminUserList from '@/pages/AdminUserList';
 import AdminEmailTemplates from '@/pages/AdminEmailTemplates';
 import AdminNotifications from '@/pages/AdminNotifications';
+import AdminReports from '@/pages/AdminReports';
 import UserOnlyRoute from '@/components/UserOnlyRoute';
 import ScrollToTop from '@/components/ScrollToTop';
 
@@ -213,6 +214,7 @@ export default function AppRouter() {
             <Route path="/admin/userlist" element={<AdminUserList />} />
             <Route path="/admin/emails" element={<AdminEmailTemplates />} />
             <Route path="/admin/notifications" element={<AdminNotifications />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />

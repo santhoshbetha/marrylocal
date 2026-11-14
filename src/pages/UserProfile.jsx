@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PresenceBadge } from '@/components/PresenceBadge';
 import { ProfileSkeleton } from '@/components/ProfileSkeleton';
+import { ReportUserDialog } from '@/components/ReportUserDialog';
 import { VerificationBadges } from '@/components/VerificationBadges';
 import { apiClient, describeApiError } from '@/api/client';
 import { useModerationAction, useProfileInteraction } from '@/hooks/useDiscovery';
@@ -114,6 +115,7 @@ function UserProfile() {
     return params.get('newTab') === 'true';
   });
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -238,12 +240,7 @@ function UserProfile() {
   };
 
   const reportUser = () => {
-    const subject = encodeURIComponent('Report User');
-    const body = encodeURIComponent(
-      `Reporting user ID: ${profile?.shortid || profile?.id}\n\nPlease provide details about the issue:`,
-    );
-
-    window.location.href = `mailto:support@marrylocal.in?subject=${subject}&body=${body}`;
+    setIsReportOpen(true);
   };
 
   const openInNewTab = () => {
@@ -759,6 +756,8 @@ function UserProfile() {
           </div>
         </div>
       </div>
+      <ReportUserDialog open={isReportOpen} onOpenChange={setIsReportOpen} user={profile} />
+
       {isLightboxOpen && images.length > 0 ? (
         <div
           role="dialog"
