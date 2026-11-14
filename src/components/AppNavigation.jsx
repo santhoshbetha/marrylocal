@@ -13,6 +13,7 @@ import {
   Search,
   Settings,
   Shield,
+  ShieldCheck,
   ScanLine,
   UserPen,
   Users,
@@ -25,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { MobileBottomNav, Sidebar } from '@/components/Sidebar';
 import { PresenceProvider } from '@/hooks/PresenceProvider';
@@ -32,6 +34,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../store/authStore';
 import { useAuthActions } from '../hooks/useAuthActions';
 import { updateUserInfo } from '../api/profiles';
+import { adminKeys, fetchAdminVerifications } from '../api/admin';
 
 export function AppNavigation({ children }) {
   const { user, profiledata, setProfiledata, loading, token } = useAuth();
@@ -100,6 +103,16 @@ export function AppNavigation({ children }) {
   const role = String(user?.role ?? profiledata?.role ?? '').toLowerCase();
   const isAdmin = role === 'admin' || user?.is_admin === true || profiledata?.is_admin === true;
 
+  const pendingKycQuery = useQuery({
+    queryKey: adminKeys.pendingVerifications(),
+    queryFn: ({ signal }) =>
+      fetchAdminVerifications({ view: 'my_queue', page: 1, per_page: 1, signal }),
+    enabled: isAdmin,
+    staleTime: 60_000,
+  });
+
+  const pendingKycCount = pendingKycQuery.data?.meta?.total_count ?? 0;
+
   const navigationGroups = useMemo(() => {
     if (isAdmin) {
       return [
@@ -118,6 +131,13 @@ export function AppNavigation({ children }) {
               end: true,
             },
             { to: '/admin/reports', label: 'User Reports', icon: Flag, end: true },
+            {
+              to: '/admin/verifications',
+              label: 'Verifications',
+              icon: ShieldCheck,
+              end: true,
+              badgeCount: pendingKycCount,
+            },
           ],
         },
       ];
@@ -205,7 +225,7 @@ export function AppNavigation({ children }) {
       { label: 'Discover', items: discoverItems },
       { label: 'Account', items: accountItems },
     ];
-  }, [isAdmin, profiledata, user]);
+  }, [isAdmin, pendingKycCount, profiledata, user]);
 
   const mobileItems = useMemo(() => {
     if (isAdmin) return navigationGroups[0]?.items ?? [];

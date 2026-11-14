@@ -41,6 +41,10 @@ function NavigationItem({ item, isOnline, isLoggingOut, unreadCount = 0 }) {
         <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-primary-foreground">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
+      ) : item.badgeCount > 0 ? (
+        <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-black text-primary-foreground">
+          {item.badgeCount > 99 ? '99+' : item.badgeCount}
+        </span>
       ) : null}
     </NavLink>
   );

@@ -12,7 +12,8 @@ export const adminKeys = {
   all: ['admin'],
   users: filters => ['admin', 'users', filters ?? {}],
   userLookup: () => ['admin', 'user-lookup'],
-  verifications: () => ['admin', 'verifications'],
+  verifications: filters => ['admin', 'verifications', filters ?? {}],
+  pendingVerifications: () => ['admin', 'verifications', 'pending-count'],
   verificationHistory: userId => ['admin', 'verification-history', userId],
   reports: status => ['admin', 'reports', status ?? 'pending'],
   settings: () => ['admin', 'settings'],
@@ -127,9 +128,28 @@ export async function fetchAdminSettings({ signal } = {}) {
   return data?.data?.settings ?? {};
 }
 
-export async function fetchAdminVerifications({ signal } = {}) {
-  const { data } = await apiClient.get('/api/v1/admin/verifications', { signal });
-  return data?.data?.verifications ?? [];
+export async function fetchAdminVerifications({
+  view = 'my_queue',
+  state,
+  city,
+  page = 1,
+  per_page = 20,
+  signal,
+} = {}) {
+  const { data } = await apiClient.get('/api/v1/admin/verifications', {
+    params: { view, state, city, page, per_page },
+    signal,
+  });
+
+  return {
+    items: data?.data?.items ?? data?.data?.verifications ?? [],
+    meta: data?.data?.meta ?? {
+      page,
+      per_page,
+      total_count: 0,
+      total_pages: 0,
+    },
+  };
 }
 
 export async function approveAdminVerification(id, { signal } = {}) {

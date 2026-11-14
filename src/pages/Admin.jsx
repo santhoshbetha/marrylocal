@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+﻿import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,25 +15,12 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import {
-  BadgeCheck,
-  CheckCircle2,
-  CreditCard,
-  FileImage,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  UserRound,
-  XCircle,
-} from 'lucide-react';
+import { BadgeCheck, CreditCard, RefreshCw, Search, ShieldCheck, UserRound } from 'lucide-react';
 import { describeApiError } from '@/api/client';
 import {
   adminKeys,
-  approveAdminVerification,
   fetchAdminSettings,
-  fetchAdminVerifications,
   lookupAdminUser,
-  rejectAdminVerification,
   updateAdminSettings,
   updateAdminUser,
 } from '@/api/admin';
@@ -174,34 +161,6 @@ export default function Admin() {
     },
     onError: error => {
       toast.error(describeApiError(error, 'Could not update verification enforcement'));
-    },
-  });
-
-  const verificationsQuery = useQuery({
-    queryKey: adminKeys.verifications(),
-    queryFn: ({ signal }) => fetchAdminVerifications({ signal }),
-    staleTime: 15_000,
-  });
-
-  const approveVerificationMutation = useMutation({
-    mutationFn: id => approveAdminVerification(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.verifications() });
-      toast.success('Identity approved and raw document purged');
-    },
-    onError: error => {
-      toast.error(describeApiError(error, 'Could not approve this document'));
-    },
-  });
-
-  const rejectVerificationMutation = useMutation({
-    mutationFn: ({ id, reason }) => rejectAdminVerification(id, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.verifications() });
-      toast.success('Identity rejected and raw document purged');
-    },
-    onError: error => {
-      toast.error(describeApiError(error, 'Could not reject this document'));
     },
   });
 
@@ -417,109 +376,9 @@ export default function Admin() {
                 settingsMutation.mutate({ verification_validity_days: days });
               }}
             >
-              {settingsMutation.isPending ? 'Saving…' : 'Save validity'}
+              {settingsMutation.isPending ? 'Savingâ€¦' : 'Save validity'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6 border-border/60 bg-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileImage className="h-5 w-5 text-primary" />
-            Identity Review Queue
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {verificationsQuery.isLoading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Loading submissions...</p>
-          ) : verificationsQuery.data?.length ? (
-            <div className="grid gap-4 xl:grid-cols-2">
-              {verificationsQuery.data.map(verification => (
-                <div
-                  key={verification.id}
-                  className="rounded-2xl border border-border/60 bg-muted/30 p-4"
-                >
-                  <div className="grid gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
-                    <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
-                      {verification.document_image_url ? (
-                        <img
-                          src={verification.document_image_url}
-                          alt="Private identity document preview"
-                          className="h-40 w-full object-contain"
-                        />
-                      ) : (
-                        <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
-                          Preview unavailable
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-bold text-foreground">
-                          {verification.user?.first_name} {verification.user?.last_name}
-                        </p>
-                        <Badge variant="secondary">
-                          {verification.user?.age || '—'} yrs · {verification.user?.gender || '—'}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {verification.document_type} · {verification.document_number}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Submitted{' '}
-                        {verification.inserted_at
-                          ? new Date(verification.inserted_at).toLocaleString('en-IN')
-                          : 'recently'}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          data-testid={`admin-approve-verification-${verification.id}`}
-                          disabled={
-                            approveVerificationMutation.isPending ||
-                            rejectVerificationMutation.isPending
-                          }
-                          onClick={() => approveVerificationMutation.mutate(verification.id)}
-                          className="rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-500"
-                        >
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                          Approve
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={
-                            approveVerificationMutation.isPending ||
-                            rejectVerificationMutation.isPending
-                          }
-                          onClick={() => {
-                            const reason = window.prompt('Rejection reason');
-                            if (reason?.trim()) {
-                              rejectVerificationMutation.mutate({
-                                id: verification.id,
-                                reason: reason.trim(),
-                              });
-                            }
-                          }}
-                          className="rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
-                        >
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No documents waiting for review.
-            </p>
-          )}
         </CardContent>
       </Card>
 
@@ -543,7 +402,7 @@ export default function Admin() {
             />
             <Button onClick={handleSearch} disabled={isSearching}>
               <Search className="mr-2 h-4 w-4" />
-              {isSearching ? 'Searching…' : 'Search'}
+              {isSearching ? 'Searchingâ€¦' : 'Search'}
             </Button>
             <Button variant="outline" onClick={handleClear}>
               Clear
@@ -571,7 +430,7 @@ export default function Admin() {
                   ) : null}
                 </CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {user.email || 'No email'} · {user.phone_number || 'No phone'}
+                  {user.email || 'No email'} Â· {user.phone_number || 'No phone'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -694,7 +553,7 @@ export default function Admin() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="accepted_one_time_fees_amount">Accepted one-time fee (₹)</Label>
+                <Label htmlFor="accepted_one_time_fees_amount">Accepted one-time fee (â‚¹)</Label>
                 <Input
                   id="accepted_one_time_fees_amount"
                   type="number"
@@ -775,7 +634,7 @@ export default function Admin() {
 
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={handleSave} disabled={isSaving || !isOnline}>
-                {isSaving ? 'Saving…' : 'Save changes'}
+                {isSaving ? 'Savingâ€¦' : 'Save changes'}
               </Button>
               <Button
                 type="button"
